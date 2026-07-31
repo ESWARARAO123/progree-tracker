@@ -18,7 +18,7 @@ export const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'EMPLOYEE', department: '', designation: '' });
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'EMPLOYEE', department: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -61,9 +61,8 @@ export const UsersPage: React.FC = () => {
         password: form.password,
         role: form.role,
         department: form.department || undefined,
-        designation: form.designation || undefined,
       });
-      setForm({ full_name: '', email: '', password: '', role: 'EMPLOYEE', department: '', designation: '' });
+      setForm({ full_name: '', email: '', password: '', role: 'EMPLOYEE', department: '' });
       setShowForm(false);
       await loadUsers();
     } catch (err: any) {
@@ -209,14 +208,6 @@ export const UsersPage: React.FC = () => {
               <input
                 type="text" value={form.department}
                 onChange={(e) => setForm({ ...form, department: e.target.value })}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Designation</label>
-              <input
-                type="text" value={form.designation}
-                onChange={(e) => setForm({ ...form, designation: e.target.value })}
                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               />
             </div>

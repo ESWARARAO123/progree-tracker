@@ -155,6 +155,13 @@ export async function updateTaskStatus(token: string, taskId: string, status: st
   return handleResponse(res);
 }
 
+export async function updateTask(token: string, taskId: string, data: any) {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
 // Updates
 export async function getUpdates(token: string, params?: { report_date?: string; user_id?: string }) {
   const searchParams = new URLSearchParams();

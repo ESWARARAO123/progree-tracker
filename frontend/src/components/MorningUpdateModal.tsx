@@ -9,11 +9,14 @@ interface Props {
 }
 
 export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
-  const { projects, tasks, submitMorningUpdate, currentUser, updates } = useApp();
+  const { projects, tasks, submitMorningUpdate, updateTaskStatus, currentUser, updates } = useApp();
   
   const userTodayUpdate = updates.find(u => u.userId === currentUser.id && u.reportDate === todayStr());
   const isAlreadySubmitted = !!userTodayUpdate?.morningSubmittedAt;
 
+  const myActiveTasks = tasks.filter(t => (t.assignedTo === currentUser.id || currentUser.role === 'ADMIN') && t.status !== 'COMPLETED');
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
   const [primaryTask, setPrimaryTask] = useState('');
   const [plannedWork, setPlannedWork] = useState('');
@@ -22,21 +25,43 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  const handleSelectTask = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    if (!taskId) return;
+    const matched = tasks.find(t => t.id === taskId);
+    if (matched) {
+      setProjectId(matched.projectId);
+      setPrimaryTask(matched.title);
+      setPlannedWork(`Working on assigned task: ${matched.title}${matched.description ? ` - ${matched.description}` : ''}`);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!plannedWork.trim()) return;
 
-    // Try to find a matching task by title (case-insensitive)
-    const matchedTask = tasks.find(t => t.title.toLowerCase() === primaryTask.trim().toLowerCase());
+    const matchedTask = selectedTaskId 
+      ? tasks.find(t => t.id === selectedTaskId)
+      : tasks.find(t => t.title.toLowerCase() === primaryTask.trim().toLowerCase());
+
+    const activeTaskId = matchedTask ? matchedTask.id : (selectedTaskId || null);
 
     submitMorningUpdate({
       projectId,
-      taskId: matchedTask ? matchedTask.id : null,
-      taskTitle: primaryTask.trim() || undefined,
+      taskId: activeTaskId,
+      taskTitle: primaryTask.trim() || matchedTask?.title || undefined,
       plannedWork,
       estHours: Number(estHours),
       blockers
     });
+
+    if (activeTaskId) {
+      const targetTask = tasks.find(t => t.id === activeTaskId);
+      if (targetTask && targetTask.status === 'NOT_STARTED') {
+        updateTaskStatus(activeTaskId, 'IN_PROGRESS');
+      }
+    }
+
     onClose();
   };
 
@@ -51,7 +76,7 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h3 className="font-bold text-lg text-white">Submit Morning Update</h3>
-              <p className="text-xs text-slate-300">Set today's commitment & planned work (9 AM - 12 PM window)</p>
+              <p className="text-xs text-slate-300">Set today's commitment & link to your assigned tasks</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
@@ -79,6 +104,28 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* Active Assigned Task Selector */}
+            {myActiveTasks.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-emerald-400 mb-1 flex items-center justify-between">
+                  <span>Connect Assigned Active Task</span>
+                  <span className="text-[10px] text-slate-400 font-normal">({myActiveTasks.length} active tasks)</span>
+                </label>
+                <select
+                  value={selectedTaskId}
+                  onChange={e => handleSelectTask(e.target.value)}
+                  className="w-full bg-emerald-950/30 border border-emerald-500/40 rounded-xl px-3 py-2 text-xs text-emerald-200 focus:border-emerald-500 focus:outline-none cursor-pointer font-medium"
+                >
+                  <option value="" className="bg-slate-900 text-slate-400">-- Select from your assigned tasks --</option>
+                  {myActiveTasks.map(t => (
+                    <option key={t.id} value={t.id} className="bg-slate-900 text-white">
+                      [{t.projectName}] {t.title} ({t.priority} • {t.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Select Project *</label>
               <select
@@ -93,7 +140,7 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Primary Task *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Primary Task Title *</label>
               <input
                 type="text"
                 required

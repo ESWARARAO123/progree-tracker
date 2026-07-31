@@ -9,12 +9,16 @@ interface Props {
 }
 
 export const EveningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
-  const { submitEveningUpdate, currentUser, updates } = useApp();
+  const { submitEveningUpdate, updateTaskStatus, tasks, currentUser, updates } = useApp();
 
   const userTodayUpdate = updates.find(u => u.userId === currentUser.id && u.reportDate === todayStr());
   const isMorningDone = !!userTodayUpdate?.morningSubmittedAt;
   const isEveningDone = !!userTodayUpdate?.eveningSubmittedAt;
 
+  const connectedTaskId = userTodayUpdate?.morningTaskId;
+  const connectedTask = connectedTaskId ? tasks.find(t => t.id === connectedTaskId) : null;
+
+  const [taskStatusOption, setTaskStatusOption] = useState<'IN_PROGRESS' | 'COMPLETED' | 'BLOCKED'>('COMPLETED');
   const [completedWork, setCompletedWork] = useState('');
   const [remainingWork, setRemainingWork] = useState('');
   const [hoursSpent, setHoursSpent] = useState(8.0);
@@ -26,6 +30,7 @@ export const EveningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!completedWork.trim()) return;
+
     submitEveningUpdate({
       completedWork,
       remainingWork,
@@ -33,6 +38,11 @@ export const EveningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
       challenges,
       nextDayPlan
     });
+
+    if (connectedTaskId) {
+      updateTaskStatus(connectedTaskId, taskStatusOption);
+    }
+
     onClose();
   };
 
@@ -47,7 +57,7 @@ export const EveningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h3 className="font-bold text-lg text-white">Submit Evening Update</h3>
-              <p className="text-xs text-slate-300">Wrap up daily accomplishments (4 PM - 10 PM window)</p>
+              <p className="text-xs text-slate-300">Wrap up daily accomplishments & update active task status</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
@@ -89,6 +99,61 @@ export const EveningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* Connected Task Banner */}
+            {(userTodayUpdate.morningTaskTitle || connectedTask) && (
+              <div className="bg-blue-950/40 border border-blue-500/30 rounded-xl p-3 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-400 font-medium">Connected Morning Task:</span>
+                  <span className="text-blue-300 font-semibold">{connectedTask?.projectName || 'Project Task'}</span>
+                </div>
+                <div className="font-bold text-xs text-white">
+                  {connectedTask?.title || userTodayUpdate.morningTaskTitle}
+                </div>
+
+                {connectedTaskId && (
+                  <div className="pt-2 border-t border-blue-500/20">
+                    <label className="block text-[11px] font-semibold text-blue-300 mb-1">
+                      Update Task Status on Wrap-Up:
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTaskStatusOption('IN_PROGRESS')}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition ${
+                          taskStatusOption === 'IN_PROGRESS'
+                            ? 'bg-blue-600 text-white border-blue-400'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                        }`}
+                      >
+                        In Progress
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaskStatusOption('COMPLETED')}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition ${
+                          taskStatusOption === 'COMPLETED'
+                            ? 'bg-emerald-600 text-white border-emerald-400'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                        }`}
+                      >
+                        Completed ✓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaskStatusOption('BLOCKED')}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition ${
+                          taskStatusOption === 'BLOCKED'
+                            ? 'bg-rose-600 text-white border-rose-400'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                        }`}
+                      >
+                        Blocked ⚠️
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Completed Work Today *</label>
               <textarea

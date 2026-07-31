@@ -8,6 +8,7 @@ class CreateTaskRequest(BaseModel):
     description: str | None = None
     priority: str = "MEDIUM"
     assigned_to: str | None = None
+    assigned_to_ids: list[str] = []
     due_date: date | None = None
 
 
@@ -30,3 +31,12 @@ class TaskResponse(BaseModel):
 
 class UpdateTaskStatusRequest(BaseModel):
     status: str
+
+
+class UpdateTaskRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    priority: str | None = None
+    status: str | None = None
+    assigned_to: str | None = None
+    due_date: date | None = None

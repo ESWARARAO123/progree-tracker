@@ -35,6 +35,7 @@ interface AppContextType {
   createProject: (project: any) => Promise<void>;
   createTask: (task: any) => Promise<void>;
   updateTaskStatus: (taskId: string, status: Task['status']) => Promise<void>;
+  updateTask: (taskId: string, data: any) => Promise<void>;
   applyLeave: (data: { startDate: string; endDate: string; reason: string }) => Promise<void>;
   reviewLeaveRequest: (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => Promise<void>;
   trigger10PmScan: () => Promise<void>;
@@ -440,20 +441,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const createTask = useCallback(async (taskData: any) => {
     if (!token) return;
-    const result = await api.createTask(token, {
+    await api.createTask(token, {
       project_id: taskData.projectId,
       title: taskData.title,
       description: taskData.description,
       priority: taskData.priority,
       assigned_to: taskData.assignedTo,
+      assigned_to_ids: taskData.assignedToIds || [],
       due_date: taskData.dueDate,
     });
-    setTasks(prev => [mapTask(result), ...prev]);
-  }, [token]);
+    await refreshData();
+  }, [token, refreshData]);
 
   const updateTaskStatus = useCallback(async (taskId: string, status: Task['status']) => {
     if (!token) return;
     const result = await api.updateTaskStatus(token, taskId, status);
+    const mapped = mapTask(result);
+    setTasks(prev => prev.map(t => t.id === mapped.id ? mapped : t));
+  }, [token]);
+
+  const updateTask = useCallback(async (taskId: string, data: any) => {
+    if (!token) return;
+    const result = await api.updateTask(token, taskId, data);
     const mapped = mapTask(result);
     setTasks(prev => prev.map(t => t.id === mapped.id ? mapped : t));
   }, [token]);
@@ -535,6 +544,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createProject,
       createTask,
       updateTaskStatus,
+      updateTask,
       applyLeave,
       reviewLeaveRequest,
       trigger10PmScan,

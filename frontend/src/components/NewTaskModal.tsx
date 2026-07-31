@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CheckSquare, X } from 'lucide-react';
+import { CheckSquare, X, UserPlus, Check } from 'lucide-react';
 import type { Priority, TaskStatus } from '../types';
 
 
@@ -11,23 +11,29 @@ interface Props {
 
 export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const { createTask, projects, users, currentUser } = useApp();
+  const activeUsers = users.filter(u => u.isActive);
 
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [status, setStatus] = useState<TaskStatus>('NOT_STARTED');
-  const [assignedTo, setAssignedTo] = useState(currentUser?.id || '');
+  const [assignedToIds, setAssignedToIds] = useState<string[]>(() => currentUser?.id ? [currentUser.id] : []);
   const [dueDate, setDueDate] = useState('');
 
   if (!isOpen) return null;
+
+  const toggleUser = (id: string) => {
+    setAssignedToIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     const proj = projects.find(p => p.id === projectId);
-    const assignee = users.find(u => u.id === assignedTo);
 
     createTask({
       projectId,
@@ -36,8 +42,8 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
       description,
       priority,
       status,
-      assignedTo,
-      assignedToName: assignee?.fullName || 'Unassigned',
+      assignedTo: assignedToIds[0] || null,
+      assignedToIds: assignedToIds.length > 0 ? assignedToIds : (currentUser?.id ? [currentUser.id] : []),
       dueDate
     });
     onClose();
@@ -53,7 +59,7 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h3 className="font-bold text-lg text-white">Create New Task</h3>
-              <p className="text-xs text-slate-400">Assign deliverables to team members</p>
+              <p className="text-xs text-slate-400">Assign deliverables to single or multiple team members</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white">
@@ -99,16 +105,34 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Assignee *</label>
-            <select
-              value={assignedTo}
-              onChange={e => setAssignedTo(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none"
-            >
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.fullName} ({u.department})</option>
-              ))}
-            </select>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center space-x-1.5">
+              <UserPlus className="w-3.5 h-3.5 text-blue-400" />
+              <span>Assignees (Select 1 or Multiple) *</span>
+            </label>
+
+            <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-32 overflow-y-auto space-y-1">
+              {activeUsers.map(u => {
+                const selected = assignedToIds.includes(u.id);
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => toggleUser(u.id)}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition ${
+                      selected
+                        ? 'bg-blue-500/20 text-blue-200 border border-blue-500/40 font-semibold'
+                        : 'text-slate-400 hover:bg-slate-700/50 border border-transparent'
+                    }`}
+                  >
+                    <span>{u.fullName} <span className="text-slate-500">({u.role})</span></span>
+                    {selected && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                  </button>
+                );
+              })}
+            </div>
+            {assignedToIds.length > 0 && (
+              <p className="text-[10px] text-blue-400 mt-1">{assignedToIds.length} assignee{assignedToIds.length > 1 ? 's' : ''} selected (will replicate to all assigned users)</p>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">

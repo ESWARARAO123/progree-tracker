@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, CheckSquare, User, Calendar, Sun, ArrowUpDown, Briefcase } from 'lucide-react';
+import { Plus, CheckSquare, User, Calendar, Sun, ArrowUpDown, Edit3 } from 'lucide-react';
 import { NewTaskModal } from '../components/NewTaskModal';
+import { EditTaskModal } from '../components/EditTaskModal';
 import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
-import type { TaskStatus } from '../types';
+import type { TaskStatus, Task } from '../types';
 
 const statusProgress: Record<TaskStatus, number> = {
   'NOT_STARTED': 0,
@@ -38,9 +39,10 @@ const allStatuses: TaskStatus[] = ['NOT_STARTED', 'IN_PROGRESS', 'BLOCKED', 'COM
 export const TasksPage: React.FC = () => {
   const { tasks, updates, projects, users, updateTaskStatus, currentUser, loading } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string>('ALL');
-  const [selectedUser, setSelectedUser] = useState<string>('ALL');
-  const [sortBy, setSortBy] = useState<'DEFAULT' | 'PROJECT_ASC' | 'USER_ASC' | 'PRIORITY_DESC' | 'DUE_DATE_ASC'>('DEFAULT');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('ALL');
+  const [selectedUserId, setSelectedUserId] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<'PRIORITY' | 'DUE_DATE' | 'PROJECT' | 'STATUS'>('PRIORITY');
 
   const today = todayStr();
 
@@ -52,103 +54,97 @@ export const TasksPage: React.FC = () => {
     );
   }
 
-  // Filter tasks based on project and assignee
-  const filteredTasks = tasks.filter(t => {
-    if (selectedProject !== 'ALL' && t.projectId !== selectedProject) return false;
-    if (selectedUser !== 'ALL' && t.assignedTo !== selectedUser) return false;
-    return true;
-  });
-
-  // Sort tasks
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    if (sortBy === 'PROJECT_ASC') {
-      return (a.projectName || '').localeCompare(b.projectName || '');
-    }
-    if (sortBy === 'USER_ASC') {
-      return (a.assignedToName || '').localeCompare(b.assignedToName || '');
-    }
-    if (sortBy === 'PRIORITY_DESC') {
-      return (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
-    }
-    if (sortBy === 'DUE_DATE_ASC') {
-      return (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99');
-    }
-    return 0;
-  });
-
   if (currentUser.role === 'ADMIN') {
+    let filteredTasks = [...tasks];
+    if (selectedProjectId !== 'ALL') {
+      filteredTasks = filteredTasks.filter(t => t.projectId === selectedProjectId);
+    }
+    if (selectedUserId !== 'ALL') {
+      filteredTasks = filteredTasks.filter(t => t.assignedTo === selectedUserId);
+    }
+
+    const sortedTasks = [...filteredTasks].sort((a, b) => {
+      if (sortBy === 'PRIORITY') {
+        return (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
+      }
+      if (sortBy === 'DUE_DATE') {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate.localeCompare(b.dueDate);
+      }
+      if (sortBy === 'PROJECT') {
+        return a.projectName.localeCompare(b.projectName);
+      }
+      if (sortBy === 'STATUS') {
+        return a.status.localeCompare(b.status);
+      }
+      return 0;
+    });
+
     return (
       <div className="space-y-6 pb-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center space-x-2">
               <CheckSquare className="w-5 h-5 text-blue-400" />
-              <span>Task Board</span>
+              <span>Task Management Board</span>
             </h2>
-            <p className="text-xs text-slate-400">All tasks across projects — assignee, priority, timeline, and status.</p>
+            <p className="text-xs text-slate-400">Company-wide task distribution, priority status, and assignee updates.</p>
           </div>
-
           <div className="flex items-center space-x-3">
-            {/* Top Right Sort Dropdown */}
-            <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/80 px-3 py-2 rounded-xl text-xs shadow-sm">
-              <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-slate-400 font-semibold hidden sm:inline">Sort:</span>
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value as any)}
-                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-xs"
-              >
-                <option value="DEFAULT" className="bg-slate-900 text-white">Default Order</option>
-                <option value="PROJECT_ASC" className="bg-slate-900 text-white">Project Name (A-Z)</option>
-                <option value="USER_ASC" className="bg-slate-900 text-white">Assignee Name (A-Z)</option>
-                <option value="PRIORITY_DESC" className="bg-slate-900 text-white">Priority (Critical First)</option>
-                <option value="DUE_DATE_ASC" className="bg-slate-900 text-white">Due Date (Earliest First)</option>
-              </select>
-            </div>
-
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-2 shadow-lg shadow-blue-600/30 transition"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-blue-600/30 transition"
             >
               <Plus className="w-4 h-4" />
-              <span>Create Task</span>
+              <span>New Task</span>
             </button>
           </div>
         </div>
 
-        {/* Filter Ribbon for Admin */}
-        <div className="glass-panel p-4 rounded-xl border border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1 flex items-center space-x-1">
-              <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Filter by Project</span>
-            </label>
-            <select
-              value={selectedProject}
-              onChange={e => setSelectedProject(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">All Projects</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-slate-400 font-medium">Project:</span>
+              <select
+                value={selectedProjectId}
+                onChange={e => setSelectedProjectId(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+              >
+                <option value="ALL">All Projects ({projects.length})</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-slate-400 font-medium">Assignee:</span>
+              <select
+                value={selectedUserId}
+                onChange={e => setSelectedUserId(e.target.value)}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+              >
+                <option value="ALL">All Team Members ({users.length})</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>{u.fullName}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-400 mb-1 flex items-center space-x-1">
-              <User className="w-3.5 h-3.5 text-blue-400" />
-              <span>Filter by Assignee</span>
-            </label>
+          <div className="flex items-center space-x-2 self-end md:self-auto">
+            <ArrowUpDown className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-xs text-slate-400 font-semibold">Sort Tasks:</span>
             <select
-              value={selectedUser}
-              onChange={e => setSelectedUser(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none cursor-pointer"
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as any)}
+              className="bg-slate-800 border border-slate-700 text-xs text-white font-medium rounded-xl px-3 py-1.5 focus:border-blue-500 focus:outline-none cursor-pointer"
             >
-              <option value="ALL">All Assignees</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.fullName}</option>
-              ))}
+              <option value="PRIORITY">By Priority (Highest First)</option>
+              <option value="DUE_DATE">By Due Date (Earliest First)</option>
+              <option value="PROJECT">By Project Name</option>
+              <option value="STATUS">By Status</option>
             </select>
           </div>
         </div>
@@ -164,12 +160,13 @@ export const TasksPage: React.FC = () => {
                   <th className="text-left px-4 py-3 font-semibold text-slate-400">Priority</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-400">Status</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-400">Due Date</th>
+                  <th className="text-right px-4 py-3 font-semibold text-slate-400">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">No tasks found matching criteria.</td>
+                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">No tasks found matching criteria.</td>
                   </tr>
                 ) : (
                   sortedTasks.map(t => (
@@ -229,6 +226,15 @@ export const TasksPage: React.FC = () => {
                           <span className="text-slate-600">—</span>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => setEditingTask(t)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition"
+                          title="Edit Task"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -238,6 +244,9 @@ export const TasksPage: React.FC = () => {
         </div>
 
         <NewTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        {editingTask && (
+          <EditTaskModal isOpen={!!editingTask} onClose={() => setEditingTask(null)} task={editingTask} />
+        )}
       </div>
     );
   }
@@ -280,13 +289,22 @@ export const TasksPage: React.FC = () => {
                     <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t.projectName}</div>
                     <h3 className="font-bold text-sm text-white mt-1">{t.title}</h3>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    t.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
-                    t.priority === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-                    'bg-slate-800 text-slate-300 border-slate-700'
-                  }`}>
-                    {t.priority}
-                  </span>
+                  <div className="flex items-center space-x-1.5">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      t.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
+                      t.priority === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                      'bg-slate-800 text-slate-300 border-slate-700'
+                    }`}>
+                      {t.priority}
+                    </span>
+                    <button
+                      onClick={() => setEditingTask(t)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition"
+                      title="Edit Task"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {isTodayPlan && (
@@ -360,6 +378,10 @@ export const TasksPage: React.FC = () => {
           })
         )}
       </div>
+
+      {editingTask && (
+        <EditTaskModal isOpen={!!editingTask} onClose={() => setEditingTask(null)} task={editingTask} />
+      )}
     </div>
   );
 };
