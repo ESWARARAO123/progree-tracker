@@ -24,6 +24,8 @@ class Meeting(Base):
     description = Column(Text, nullable=True)
     date = Column(Date, nullable=False)
     start_time = Column(String(5), nullable=False)
+    end_time = Column(String(5), nullable=True)
+    meeting_link = Column(String(500), nullable=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

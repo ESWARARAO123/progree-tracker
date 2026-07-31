@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Briefcase, X } from 'lucide-react';
+import { Briefcase, X, UserPlus, Check } from 'lucide-react';
 import type { Priority, ProjectStatus } from '../types';
 import type { Project } from '../types';
 
@@ -12,7 +12,7 @@ interface Props {
 
 export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) => {
   const { updateProject, users } = useApp();
-  const employees = users.filter(u => u.role === 'EMPLOYEE' && u.isActive);
+  const assignableUsers = users.filter(u => u.isActive);
 
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
@@ -22,7 +22,13 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
   const [status, setStatus] = useState<ProjectStatus>(project.status as ProjectStatus);
   const [ownerId, setOwnerId] = useState(project.owner?.id || '');
 
+  const [assignedIds, setAssignedIds] = useState<string[]>(() => project.assignedUsers ? project.assignedUsers.map(u => u.id) : []);
+
   if (!isOpen) return null;
+
+  const toggleUser = (id: string) => {
+    setAssignedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +41,7 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
       priority,
       status,
       ownerId: ownerId || null,
+      assignedUserIds: assignedIds,
     });
     onClose();
   };
@@ -87,8 +94,8 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
             >
               <option value="">No owner</option>
-              {employees.map(u => (
-                <option key={u.id} value={u.id}>{u.fullName} ({u.department})</option>
+              {assignableUsers.map(u => (
+                <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>
               ))}
             </select>
           </div>
@@ -144,6 +151,42 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
                 <option value="COMPLETED">Completed</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <div className="flex items-center space-x-1.5">
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Assign Team Members / Users</span>
+              </div>
+            </label>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-36 overflow-y-auto space-y-1">
+              {assignableUsers.length === 0 ? (
+                <p className="text-[11px] text-slate-500 py-2 text-center">No users available</p>
+              ) : (
+                assignableUsers.map(u => {
+                  const selected = assignedIds.includes(u.id);
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => toggleUser(u.id)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition ${
+                        selected
+                          ? 'bg-purple-500/20 text-purple-200 border border-purple-500/30'
+                          : 'text-slate-400 hover:bg-slate-700/50 border border-transparent'
+                      }`}
+                    >
+                      <span>{u.fullName} <span className="text-slate-500">({u.role})</span></span>
+                      {selected && <Check className="w-3.5 h-3.5 text-purple-400" />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            {assignedIds.length > 0 && (
+              <p className="text-[10px] text-purple-400 mt-1">{assignedIds.length} user{assignedIds.length > 1 ? 's' : ''} assigned</p>
+            )}
           </div>
 
           <div className="flex justify-end space-x-3 pt-2">

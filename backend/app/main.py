@@ -30,6 +30,12 @@ async def lifespan(app: FastAPI):
         await conn.execute(sa_text(
             "ALTER TABLE task_updates ADD COLUMN IF NOT EXISTS morning_status task_status_enum"
         ))
+        await conn.execute(sa_text(
+            "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS end_time VARCHAR(5)"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS meeting_link VARCHAR(500)"
+        ))
 
     async with async_session() as db:
         role_result = await db.execute(select(Role).where(Role.name == "ADMIN"))
@@ -39,7 +45,7 @@ async def lifespan(app: FastAPI):
             await db.commit()
 
         admin_result = await db.execute(
-            select(User).where(User.email == "eswar@sierraedge.ai")
+            select(User).where(User.email == "admin@sierraedge.ai")
         )
         if not admin_result.scalar_one_or_none():
             role_result = await db.execute(select(Role).where(Role.name == "ADMIN"))
@@ -47,7 +53,7 @@ async def lifespan(app: FastAPI):
             admin_user = User(
                 role_id=admin_role.id,
                 full_name="Admin",
-                email="eswar@sierraedge.ai",
+                email="admin@sierraedge.ai",
                 password_hash=get_password_hash("admin123"),
                 department="Executive",
                 designation="System Administrator",

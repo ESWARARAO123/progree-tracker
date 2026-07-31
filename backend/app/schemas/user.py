@@ -22,3 +22,13 @@ class CreateUserRequest(BaseModel):
     role: str = "EMPLOYEE"
     department: str | None = None
     designation: str | None = None
+
+
+class UpdateUserRequest(BaseModel):
+    full_name: str | None = None
+    email: str | None = None
+    password: str | None = None
+    role: str | None = None
+    department: str | None = None
+    designation: str | None = None
+    is_active: bool | None = None

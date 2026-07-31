@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Clock, Lock, Zap, LogOut } from 'lucide-react';
+import { Bell, Clock, Lock, Zap, LogOut, Check, CheckCheck } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { currentUser, notifications, trigger10PmScan, markNotificationRead } = useApp();
+  const { currentUser, notifications, trigger10PmScan, markNotificationRead, markAllNotificationsRead } = useApp();
   const { logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -14,11 +14,11 @@ export const Navbar: React.FC = () => {
     <header className="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/20">
-            WT
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-blue-500/20 border border-blue-400/30 tracking-wider">
+            SEAI
           </div>
           <div>
-            <h1 className="font-bold text-white tracking-wide text-lg">SierraEdgeAI Tracker</h1>
+            <h1 className="font-bold text-white tracking-wide text-lg">Sierra Team Hub</h1>
             <span className="text-xs text-slate-400">Enterprise Work Update & Productivity System</span>
           </div>
         </div>
@@ -46,6 +46,7 @@ export const Navbar: React.FC = () => {
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="p-2 rounded-lg bg-slate-800 border border-slate-700/70 hover:bg-slate-700 text-slate-300 relative transition"
+            title="Notifications"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
@@ -56,26 +57,59 @@ export const Navbar: React.FC = () => {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-4 z-50">
+            <div className="absolute right-0 mt-2 w-88 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-4 z-50">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
-                <h4 className="font-semibold text-sm text-white">Notifications</h4>
-                <span className="text-xs text-slate-400">{unreadCount} unread</span>
+                <div className="flex items-center space-x-2">
+                  <h4 className="font-semibold text-sm text-white">Notifications</h4>
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      {unreadCount} unread
+                    </span>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllNotificationsRead}
+                    className="flex items-center space-x-1 text-[11px] text-blue-400 hover:text-blue-300 font-medium transition"
+                  >
+                    <CheckCheck className="w-3.5 h-3.5" />
+                    <span>Mark all read</span>
+                  </button>
+                )}
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {notifications.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">No notifications</p>
+                  <p className="text-xs text-slate-500 py-6 text-center">No notifications</p>
                 ) : (
                   notifications.map(n => (
                     <div
                       key={n.id}
                       onClick={() => markNotificationRead(n.id)}
-                      className={`p-2.5 rounded-lg text-xs border transition cursor-pointer ${n.isRead ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-blue-500/10 border-blue-500/30 text-white font-medium'}`}
+                      className={`p-3 rounded-xl text-xs border transition cursor-pointer space-y-1.5 ${
+                        n.isRead
+                          ? 'bg-slate-900/60 border-slate-800/80 text-slate-400 hover:bg-slate-800/50'
+                          : 'bg-blue-500/10 border-blue-500/30 text-white font-medium hover:bg-blue-500/15 shadow-sm'
+                      }`}
                     >
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-semibold text-blue-400">{n.title}</span>
-                        <span className="text-[10px] text-slate-500">{n.createdAt}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-blue-400 truncate">{n.title}</span>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          {n.isRead ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700/60 flex items-center space-x-1">
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span>Read</span>
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                              <span>New</span>
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-500">{n.createdAt}</span>
+                        </div>
                       </div>
-                      <p className="text-slate-300">{n.message}</p>
+                      <p className="text-slate-300 leading-relaxed">{n.message}</p>
                     </div>
                   ))
                 )}

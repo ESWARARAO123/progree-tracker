@@ -13,16 +13,17 @@ export const CompanyHolidayModal: React.FC<Props> = ({ isOpen, onClose, date }) 
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [holidayDate, setHolidayDate] = useState(date || new Date().toISOString().split('T')[0]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !holidayDate) return;
     createCompanyHoliday({
       name,
       description,
-      date,
+      date: holidayDate,
     });
     onClose();
   };
@@ -37,7 +38,7 @@ export const CompanyHolidayModal: React.FC<Props> = ({ isOpen, onClose, date }) 
             </div>
             <div>
               <h3 className="font-bold text-lg text-white">Add Company Holiday</h3>
-              <p className="text-xs text-slate-400">{date}</p>
+              <p className="text-xs text-slate-400">Official office holidays</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white">
@@ -46,6 +47,17 @@ export const CompanyHolidayModal: React.FC<Props> = ({ isOpen, onClose, date }) 
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Holiday Date *</label>
+            <input
+              type="date"
+              required
+              value={holidayDate}
+              onChange={e => setHolidayDate(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Holiday Name *</label>
             <input

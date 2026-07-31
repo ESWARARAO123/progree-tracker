@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, Eye, EyeOff, Shield } from 'lucide-react';
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
@@ -27,10 +27,10 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-[#0b0f19] p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/20 mx-auto mb-4">
-            WT
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-blue-500/25 border border-blue-400/30 mx-auto mb-4 tracking-wider">
+            SEAI
           </div>
-          <h1 className="text-2xl font-bold text-white">SierraEdgeAI Tracker</h1>
+          <h1 className="text-2xl font-bold text-white">Sierra Team Hub</h1>
           <p className="text-slate-400 text-sm mt-1">Sign in to your account</p>
         </div>
 
@@ -88,13 +88,6 @@ export const LoginPage: React.FC = () => {
               </>
             )}
           </button>
-
-          <div className="pt-2 text-center">
-            <div className="flex items-center justify-center space-x-1.5 text-xs text-slate-500">
-              <Shield className="w-3 h-3" />
-              <span>Default admin: eswar@sierraedge.ai / admin123</span>
-            </div>
-          </div>
         </form>
       </div>
     </div>

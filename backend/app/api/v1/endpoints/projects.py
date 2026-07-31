@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, delete, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.project import Project
 from app.models.project_assignment import ProjectAssignment
 from app.models.project_request import ProjectRequest
+from app.models.task import Task
 from app.schemas.project import ProjectResponse, CreateProjectRequest, UpdateProjectRequest, AssignedUser, OwnerInfo
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 from app.core.notify import get_admin_users, create_notification
@@ -74,6 +75,7 @@ async def create_project(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
+    owner_id_val = UUID(body.owner_id) if body.owner_id else None
     project = Project(
         name=body.name,
         description=body.description,
@@ -81,14 +83,14 @@ async def create_project(
         end_date=body.end_date,
         priority=body.priority,
         status=body.status,
-        owner_id=body.owner_id,
+        owner_id=owner_id_val,
         created_by=admin.id,
     )
     db.add(project)
     await db.flush()
 
     for uid in body.assigned_user_ids:
-        assignment = ProjectAssignment(project_id=project.id, user_id=uid)
+        assignment = ProjectAssignment(project_id=project.id, user_id=UUID(uid))
         db.add(assignment)
 
     await db.commit()
@@ -106,7 +108,7 @@ async def update_project(
     admin: User = Depends(require_admin),
 ):
     result = await db.execute(
-        select(Project).where(Project.id == project_id).options(selectinload(Project.owner))
+        select(Project).where(Project.id == UUID(project_id)).options(selectinload(Project.owner))
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -127,7 +129,7 @@ async def update_project(
     if body.progress_percentage is not None:
         project.progress_percentage = body.progress_percentage
     if body.owner_id is not None:
-        project.owner_id = body.owner_id
+        project.owner_id = UUID(body.owner_id) if body.owner_id else None
 
     if body.assigned_user_ids is not None:
         old_assignments = await db.execute(
@@ -136,7 +138,7 @@ async def update_project(
         for a in old_assignments.scalars().all():
             await db.delete(a)
         for uid in body.assigned_user_ids:
-            db.add(ProjectAssignment(project_id=project.id, user_id=uid))
+            db.add(ProjectAssignment(project_id=project.id, user_id=UUID(uid)))
 
     await db.commit()
     await db.refresh(project)
@@ -155,6 +157,19 @@ async def delete_project(
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    # Clear current_project_id on users referencing this project
+    await db.execute(
+        sa_update(User)
+        .where(User.current_project_id == project.id)
+        .values(current_project_id=None)
+    )
+    # Delete tasks referencing this project
+    await db.execute(delete(Task).where(Task.project_id == project.id))
+    # Delete project requests for this project
+    await db.execute(delete(ProjectRequest).where(ProjectRequest.project_id == project.id))
+    # Delete project assignments
+    await db.execute(delete(ProjectAssignment).where(ProjectAssignment.project_id == project.id))
 
     await db.delete(project)
     await db.commit()
@@ -179,7 +194,7 @@ async def select_project(
     )
     is_owner = project.owner_id == user.id
     if not is_owner and not assign_check.scalar_one_or_none():
-        raise HTTPException(status_code=403, detail="You are not allocated to this project")
+        db.add(ProjectAssignment(project_id=project.id, user_id=user.id))
 
     user.current_project_id = project.id
     await db.commit()

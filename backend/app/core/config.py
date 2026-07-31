@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "SierraEdgeAI Tracker API"
+    PROJECT_NAME: str = "Sierra Team Hub API"
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = "super-secret-key-change-in-production-123456789"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = "notifications@company.com"
     SMTP_PASSWORD: str = ""
     EMAILS_FROM_EMAIL: str = "notifications@company.com"
-    EMAILS_FROM_NAME: str = "Daily Work Tracker System"
+    EMAILS_FROM_NAME: str = "Sierra Team Hub"
     
     COMPANY_EMAIL_DOMAIN: str = "@sierraedge.ai"
     

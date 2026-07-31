@@ -32,6 +32,8 @@ export interface Meeting {
   description?: string;
   date: string;
   startTime: string;
+  endTime?: string;
+  meetingLink?: string;
   createdBy: string;
   createdByName?: string;
   assigneeIds: string[];

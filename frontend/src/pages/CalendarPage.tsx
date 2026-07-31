@@ -3,7 +3,9 @@ import { useApp } from '../context/AppContext';
 import { Calendar as CalendarIcon, CalendarDays, PartyPopper, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PlanMeetingModal } from '../components/PlanMeetingModal';
 import { CompanyHolidayModal } from '../components/CompanyHolidayModal';
+import { MeetingDetailModal } from '../components/MeetingDetailModal';
 import { todayStr } from '../utils/date';
+import type { Meeting } from '../types';
 
 export const CalendarPage: React.FC = () => {
   const { updates, leaveRequests, meetings, holidays, currentUser, loading, deleteCompanyHoliday } = useApp();
@@ -16,6 +18,8 @@ export const CalendarPage: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isMeetingOpen, setIsMeetingOpen] = useState(false);
   const [isHolidayOpen, setIsHolidayOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
 
   const goToPrevMonth = () => {
     setSelectedDay(null);
@@ -89,7 +93,26 @@ export const CalendarPage: React.FC = () => {
           <p className="text-xs text-slate-400">Monthly view of daily updates, approved leaves, meetings, and official working days.</p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {currentUser.role === 'ADMIN' && (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsMeetingOpen(true)}
+                className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 transition"
+              >
+                <CalendarDays className="w-4 h-4" />
+                <span>Plan Meeting</span>
+              </button>
+              <button
+                onClick={() => setIsHolidayOpen(true)}
+                className="flex items-center space-x-1.5 bg-teal-600 hover:bg-teal-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-teal-600/30 transition"
+              >
+                <PartyPopper className="w-4 h-4" />
+                <span>Add Office Holiday</span>
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <button
               onClick={goToPrevMonth}
@@ -113,8 +136,8 @@ export const CalendarPage: React.FC = () => {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <span className="text-slate-500">|</span>
-          <span className="text-emerald-400 font-bold">{totalWorkingDays} Net Working Days</span>
+          <span className="text-slate-500 hidden sm:inline">|</span>
+          <span className="text-emerald-400 font-bold text-xs">{totalWorkingDays} Net Working Days</span>
         </div>
       </div>
 
@@ -171,7 +194,7 @@ export const CalendarPage: React.FC = () => {
 
           {daysArray.map(day => {
             const status = getDayStatus(day);
-            const canPlan = currentUser.role === 'ADMIN' && (status.isToday || status.isFuture);
+            const canPlan = currentUser.role === 'ADMIN';
             const isSelected = selectedDay === day;
             const hasMeetings = status.dayMeetings.length > 0;
 
@@ -231,12 +254,21 @@ export const CalendarPage: React.FC = () => {
                     </span>
                   )}
 
-                  {status.dayMeetings.map(m => (
-                    <span key={m.id} className="flex items-center justify-between text-[9px] font-bold bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 px-1.5 py-1 rounded-md block truncate shadow-sm" title={`${m.title} at ${m.startTime}`}>
-                      <span className="truncate">📅 {m.title}</span>
-                      <span className="text-[8px] text-indigo-300 shrink-0 font-mono ml-1">({m.startTime})</span>
-                    </span>
-                  ))}
+                   {status.dayMeetings.map(m => (
+                     <button
+                       key={m.id}
+                       type="button"
+                       onClick={e => {
+                         e.stopPropagation();
+                         setSelectedMeeting(m);
+                       }}
+                       className="flex items-center justify-between w-full text-[9px] font-bold bg-indigo-600/30 text-indigo-200 border border-indigo-500/50 px-1.5 py-1 rounded-md truncate shadow-sm hover:bg-indigo-600/40 transition"
+                       title={`${m.title} at ${m.startTime}${m.endTime ? ' – ' + m.endTime : ''}`}
+                     >
+                       <span className="truncate">📅 {m.title}</span>
+                       <span className="text-[8px] text-indigo-300 shrink-0 font-mono ml-1">({m.startTime}{m.endTime ? '–' + m.endTime : ''})</span>
+                     </button>
+                   ))}
 
                   <div className="flex space-x-1 pt-1">
                     {status.hasMorning && (
@@ -286,8 +318,19 @@ export const CalendarPage: React.FC = () => {
 
       <PlanMeetingModal
         isOpen={isMeetingOpen}
-        onClose={() => setIsMeetingOpen(false)}
+        onClose={() => { setIsMeetingOpen(false); setEditingMeeting(null); }}
         date={selectedDay !== null ? dateStrFor(selectedDay) : today}
+        meeting={editingMeeting}
+      />
+      <MeetingDetailModal
+        isOpen={!!selectedMeeting}
+        onClose={() => setSelectedMeeting(null)}
+        meeting={selectedMeeting!}
+        onEdit={() => {
+          setEditingMeeting(selectedMeeting);
+          setSelectedMeeting(null);
+          setIsMeetingOpen(true);
+        }}
       />
       <CompanyHolidayModal
         isOpen={isHolidayOpen}

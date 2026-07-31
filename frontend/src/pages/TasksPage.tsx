@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, CheckSquare, User, Calendar, Sun } from 'lucide-react';
+import { Plus, CheckSquare, User, Calendar, Sun, ArrowUpDown, Briefcase } from 'lucide-react';
 import { NewTaskModal } from '../components/NewTaskModal';
 import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
 import type { TaskStatus } from '../types';
@@ -26,11 +26,22 @@ const statusBarColor: Record<TaskStatus, string> = {
   'COMPLETED': 'bg-emerald-500',
 };
 
+const priorityRank: Record<string, number> = {
+  'CRITICAL': 4,
+  'HIGH': 3,
+  'MEDIUM': 2,
+  'LOW': 1,
+};
+
 const allStatuses: TaskStatus[] = ['NOT_STARTED', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED'];
 
 export const TasksPage: React.FC = () => {
-  const { tasks, updates, updateTaskStatus, currentUser, loading } = useApp();
+  const { tasks, updates, projects, users, updateTaskStatus, currentUser, loading } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string>('ALL');
+  const [selectedUser, setSelectedUser] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<'DEFAULT' | 'PROJECT_ASC' | 'USER_ASC' | 'PRIORITY_DESC' | 'DUE_DATE_ASC'>('DEFAULT');
+
   const today = todayStr();
 
   if (loading) {
@@ -40,6 +51,30 @@ export const TasksPage: React.FC = () => {
       </div>
     );
   }
+
+  // Filter tasks based on project and assignee
+  const filteredTasks = tasks.filter(t => {
+    if (selectedProject !== 'ALL' && t.projectId !== selectedProject) return false;
+    if (selectedUser !== 'ALL' && t.assignedTo !== selectedUser) return false;
+    return true;
+  });
+
+  // Sort tasks
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    if (sortBy === 'PROJECT_ASC') {
+      return (a.projectName || '').localeCompare(b.projectName || '');
+    }
+    if (sortBy === 'USER_ASC') {
+      return (a.assignedToName || '').localeCompare(b.assignedToName || '');
+    }
+    if (sortBy === 'PRIORITY_DESC') {
+      return (priorityRank[b.priority] || 0) - (priorityRank[a.priority] || 0);
+    }
+    if (sortBy === 'DUE_DATE_ASC') {
+      return (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99');
+    }
+    return 0;
+  });
 
   if (currentUser.role === 'ADMIN') {
     return (
@@ -52,13 +87,70 @@ export const TasksPage: React.FC = () => {
             </h2>
             <p className="text-xs text-slate-400">All tasks across projects — assignee, priority, timeline, and status.</p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-2 shadow-lg shadow-blue-600/30 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Task</span>
-          </button>
+
+          <div className="flex items-center space-x-3">
+            {/* Top Right Sort Dropdown */}
+            <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/80 px-3 py-2 rounded-xl text-xs shadow-sm">
+              <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-slate-400 font-semibold hidden sm:inline">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-xs"
+              >
+                <option value="DEFAULT" className="bg-slate-900 text-white">Default Order</option>
+                <option value="PROJECT_ASC" className="bg-slate-900 text-white">Project Name (A-Z)</option>
+                <option value="USER_ASC" className="bg-slate-900 text-white">Assignee Name (A-Z)</option>
+                <option value="PRIORITY_DESC" className="bg-slate-900 text-white">Priority (Critical First)</option>
+                <option value="DUE_DATE_ASC" className="bg-slate-900 text-white">Due Date (Earliest First)</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center space-x-2 shadow-lg shadow-blue-600/30 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Task</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Ribbon for Admin */}
+        <div className="glass-panel p-4 rounded-xl border border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1 flex items-center space-x-1">
+              <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Filter by Project</span>
+            </label>
+            <select
+              value={selectedProject}
+              onChange={e => setSelectedProject(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none cursor-pointer"
+            >
+              <option value="ALL">All Projects</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1 flex items-center space-x-1">
+              <User className="w-3.5 h-3.5 text-blue-400" />
+              <span>Filter by Assignee</span>
+            </label>
+            <select
+              value={selectedUser}
+              onChange={e => setSelectedUser(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none cursor-pointer"
+            >
+              <option value="ALL">All Assignees</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.fullName}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
@@ -75,12 +167,12 @@ export const TasksPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {tasks.length === 0 ? (
+                {sortedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">No tasks found.</td>
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">No tasks found matching criteria.</td>
                   </tr>
                 ) : (
-                  tasks.map(t => (
+                  sortedTasks.map(t => (
                     <tr key={t.id} className="border-b border-slate-800 hover:bg-slate-800/40 transition">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-white">{t.title}</div>

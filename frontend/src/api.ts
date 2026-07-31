@@ -56,6 +56,23 @@ export async function toggleUserStatus(token: string, userId: string) {
   return handleResponse(res);
 }
 
+export async function updateUser(token: string, userId: string, data: any) {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteUser(token: string, userId: string) {
+  const res = await fetch(`${API_BASE}/users/${userId}`, {
+    method: 'DELETE', headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Request failed' }));
+    throw new Error(err.detail || 'Request failed');
+  }
+}
+
 // Projects
 export async function getProjects(token: string) {
   const res = await fetch(`${API_BASE}/projects/`, { headers: authHeaders(token) });
@@ -207,6 +224,13 @@ export async function markNotificationRead(token: string, notificationId: string
   return handleResponse(res);
 }
 
+export async function markAllNotificationsRead(token: string) {
+  const res = await fetch(`${API_BASE}/notifications/read-all`, {
+    method: 'PATCH', headers: authHeaders(token),
+  });
+  return handleResponse(res);
+}
+
 // Audit
 export async function getAuditLogs(token: string) {
   const res = await fetch(`${API_BASE}/audit/`, { headers: authHeaders(token) });
@@ -230,6 +254,23 @@ export async function createMeeting(token: string, data: any) {
     method: 'POST', headers: authHeaders(token), body: JSON.stringify(data),
   });
   return handleResponse(res);
+}
+
+export async function updateMeeting(token: string, meetingId: string, data: any) {
+  const res = await fetch(`${API_BASE}/meetings/${meetingId}`, {
+    method: 'PUT', headers: authHeaders(token), body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
+export async function deleteMeeting(token: string, meetingId: string) {
+  const res = await fetch(`${API_BASE}/meetings/${meetingId}`, {
+    method: 'DELETE', headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Request failed' }));
+    throw new Error(err.detail || 'Request failed');
+  }
 }
 
 // Company Holidays

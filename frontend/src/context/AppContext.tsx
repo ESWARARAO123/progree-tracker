@@ -25,7 +25,9 @@ interface AppContextType {
   selectProject: (projectId: string) => Promise<void>;
   requestProjectAccess: (projectId: string) => Promise<void>;
   reviewProjectRequest: (requestId: string, status: 'APPROVED' | 'REJECTED') => Promise<void>;
-  createMeeting: (data: { title: string; description?: string; date: string; startTime: string; assigneeIds: string[] }) => Promise<void>;
+  createMeeting: (data: { title: string; description?: string; date: string; startTime: string; endTime?: string; meetingLink?: string; assigneeIds: string[] }) => Promise<void>;
+  updateMeeting: (meetingId: string, data: { title?: string; description?: string; date?: string; startTime?: string; endTime?: string; meetingLink?: string; assigneeIds?: string[] }) => Promise<void>;
+  deleteMeeting: (meetingId: string) => Promise<void>;
   createCompanyHoliday: (data: { name: string; description?: string; date: string }) => Promise<void>;
   deleteCompanyHoliday: (holidayId: string) => Promise<void>;
   submitMorningUpdate: (data: { projectId: string; taskId?: string | null; taskTitle?: string; plannedWork: string; estHours: number; blockers?: string }) => Promise<void>;
@@ -37,6 +39,7 @@ interface AppContextType {
   reviewLeaveRequest: (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => Promise<void>;
   trigger10PmScan: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -159,6 +162,8 @@ function mapMeeting(m: any): Meeting {
     description: m.description || '',
     date: m.date,
     startTime: m.start_time || m.startTime,
+    endTime: m.end_time || m.endTime,
+    meetingLink: m.meeting_link || m.meetingLink,
     createdBy: m.created_by || m.createdBy,
     createdByName: m.created_by_name || m.createdByName || '',
     assigneeIds: m.assignee_ids || m.assigneeIds || [],
@@ -366,18 +371,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await refreshData();
   }, [token, refreshData]);
 
-  const createMeeting = useCallback(async (data: { title: string; description?: string; date: string; startTime: string; assigneeIds: string[] }) => {
+  const createMeeting = useCallback(async (data: { title: string; description?: string; date: string; startTime: string; endTime?: string; meetingLink?: string; assigneeIds: string[] }) => {
     if (!token) return;
     const result = await api.createMeeting(token, {
       title: data.title,
       description: data.description,
       date: data.date,
       start_time: data.startTime,
+      end_time: data.endTime,
+      meeting_link: data.meetingLink,
       assignee_ids: data.assigneeIds,
     });
     setMeetings(prev => [mapMeeting(result), ...prev]);
     await refreshData();
   }, [token, refreshData]);
+
+  const updateMeeting = useCallback(async (meetingId: string, data: { title?: string; description?: string; date?: string; startTime?: string; endTime?: string; meetingLink?: string; assigneeIds?: string[] }) => {
+    if (!token) return;
+    const result = await api.updateMeeting(token, meetingId, {
+      title: data.title,
+      description: data.description,
+      date: data.date,
+      start_time: data.startTime,
+      end_time: data.endTime,
+      meeting_link: data.meetingLink,
+      assignee_ids: data.assigneeIds,
+    });
+    setMeetings(prev => prev.map(m => m.id === meetingId ? mapMeeting(result) : m));
+  }, [token]);
+
+  const deleteMeeting = useCallback(async (meetingId: string) => {
+    if (!token) return;
+    await api.deleteMeeting(token, meetingId);
+    setMeetings(prev => prev.filter(m => m.id !== meetingId));
+  }, [token]);
 
   const createCompanyHoliday = useCallback(async (data: { name: string; description?: string; date: string }) => {
     if (!token) return;
@@ -462,6 +489,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
   }, [token]);
 
+  const markAllNotificationsRead = useCallback(async () => {
+    if (!token) return;
+    await api.markAllNotificationsRead(token);
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  }, [token]);
+
   const trigger10PmScan = useCallback(async () => {
     if (!token) return;
     await api.lockTodayUpdates(token);
@@ -495,6 +528,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       requestProjectAccess,
       reviewProjectRequest,
       createMeeting,
+      updateMeeting,
+      deleteMeeting,
       createCompanyHoliday,
       deleteCompanyHoliday,
       createProject,
@@ -504,6 +539,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reviewLeaveRequest,
       trigger10PmScan,
       markNotificationRead,
+      markAllNotificationsRead,
       refreshData,
     }}>
       {children}

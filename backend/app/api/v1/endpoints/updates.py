@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.task_update import TaskUpdate
 from app.schemas.update import MorningUpdateRequest, EveningUpdateRequest, TaskUpdateResponse
 from app.api.v1.endpoints.auth import get_current_user, require_admin
+from app.core.notify import get_admin_users, create_notification
 
 router = APIRouter()
 
@@ -108,6 +109,16 @@ async def submit_morning_update(
         )
         db.add(update)
 
+    admins = await get_admin_users(db)
+    for admin_user in admins:
+        await create_notification(
+            db,
+            str(admin_user.id),
+            "New Morning Update",
+            f"{user.full_name} submitted a morning update for {today}.",
+            link="/updates",
+        )
+
     await db.commit()
     await db.refresh(update)
 
@@ -183,6 +194,16 @@ async def submit_evening_update(
     update.evening_challenges = body.challenges
     update.evening_next_day_plan = body.next_day_plan
     update.evening_submitted_at = datetime.now(timezone.utc)
+
+    admins = await get_admin_users(db)
+    for admin_user in admins:
+        await create_notification(
+            db,
+            str(admin_user.id),
+            "New Evening Update",
+            f"{user.full_name} submitted an evening update for {today}.",
+            link="/updates",
+        )
 
     await db.commit()
     await db.refresh(update)

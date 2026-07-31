@@ -11,7 +11,7 @@ interface Props {
 
 export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const { createProject, users } = useApp();
-  const employees = users.filter(u => u.role === 'EMPLOYEE' && u.isActive);
+  const assignableUsers = users.filter(u => u.isActive);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -54,7 +54,7 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h3 className="font-bold text-lg text-white">Create Enterprise Project</h3>
-              <p className="text-xs text-slate-400">Add project details, priority, and timeline</p>
+              <p className="text-xs text-slate-400">Add project details, owner, assign team members, priority, and timeline</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white">
@@ -95,8 +95,8 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
             >
               <option value="">Select an owner...</option>
-              {employees.map(u => (
-                <option key={u.id} value={u.id}>{u.fullName} ({u.department})</option>
+              {assignableUsers.map(u => (
+                <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>
               ))}
             </select>
           </div>
@@ -158,14 +158,14 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
               <div className="flex items-center space-x-1.5">
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>Assign Employees</span>
+                <span>Assign Team Members / Users</span>
               </div>
             </label>
-            <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-32 overflow-y-auto space-y-1">
-              {employees.length === 0 ? (
-                <p className="text-[11px] text-slate-500 py-2 text-center">No employees available</p>
+            <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-36 overflow-y-auto space-y-1">
+              {assignableUsers.length === 0 ? (
+                <p className="text-[11px] text-slate-500 py-2 text-center">No users available</p>
               ) : (
-                employees.map(u => {
+                assignableUsers.map(u => {
                   const selected = assignedIds.includes(u.id);
                   return (
                     <button
@@ -178,7 +178,7 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
                           : 'text-slate-400 hover:bg-slate-700/50 border border-transparent'
                       }`}
                     >
-                      <span>{u.fullName} <span className="text-slate-500">({u.department})</span></span>
+                      <span>{u.fullName} <span className="text-slate-500">({u.role})</span></span>
                       {selected && <Check className="w-3.5 h-3.5 text-purple-400" />}
                     </button>
                   );
@@ -186,7 +186,7 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
               )}
             </div>
             {assignedIds.length > 0 && (
-              <p className="text-[10px] text-purple-400 mt-1">{assignedIds.length} employee{assignedIds.length > 1 ? 's' : ''} selected</p>
+              <p className="text-[10px] text-purple-400 mt-1">{assignedIds.length} user{assignedIds.length > 1 ? 's' : ''} assigned</p>
             )}
           </div>
 

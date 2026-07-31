@@ -155,6 +155,26 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 11. Meetings Table
+CREATE TABLE meetings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    date DATE NOT NULL,
+    start_time VARCHAR(5) NOT NULL,
+    end_time VARCHAR(5),
+    meeting_link VARCHAR(500),
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12. Meeting Assignees (Junction Table)
+CREATE TABLE meeting_assignees (
+    meeting_id UUID REFERENCES meetings(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (meeting_id, user_id)
+);
+
 -- Indexes for Optimal Performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_tasks_project_id ON tasks(project_id);

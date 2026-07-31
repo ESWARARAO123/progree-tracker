@@ -87,9 +87,9 @@ async def leave_balance(
         db, user.id, start, end, statuses=["PENDING", "APPROVED"]
     )
     return LeaveBalanceResponse(
-        total_allowed=MONTHLY_LEAVE_LIMIT,
+        total_allowed=30,
         used=used,
-        available=max(0, MONTHLY_LEAVE_LIMIT - used),
+        available=max(0, 30 - used),
         month=today.strftime("%B %Y"),
     )
 
@@ -102,16 +102,6 @@ async def apply_leave(
 ):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="End date cannot be before start date.")
-
-    start, end = _month_range(body.start_date)
-    used = await _count_leaves_in_month(
-        db, user.id, start, end, statuses=["PENDING", "APPROVED"]
-    )
-    if used >= MONTHLY_LEAVE_LIMIT:
-        raise HTTPException(
-            status_code=400,
-            detail=f"You have already used all {MONTHLY_LEAVE_LIMIT} leaves for {body.start_date.strftime('%B %Y')}.",
-        )
 
     leave = LeaveRequest(
         user_id=user.id,
@@ -134,17 +124,6 @@ async def apply_leave(
 
     await db.commit()
     await db.refresh(leave)
-
-    admin_emails = [a.email for a in admins]
-    send_leave_notification_email(
-        employee_name=user.full_name,
-        employee_email=user.email,
-        request_type="LEAVE",
-        start_date=body.start_date,
-        end_date=body.end_date,
-        reason=body.reason,
-        admin_emails=admin_emails,
-    )
 
     result = await db.execute(
         select(LeaveRequest).where(LeaveRequest.id == leave.id).options(
@@ -186,17 +165,6 @@ async def review_leave_request(
     leave = result.scalar_one_or_none()
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found")
-
-    if body.status == "APPROVED":
-        start, end = _month_range(leave.start_date)
-        approved = await _count_leaves_in_month(
-            db, leave.user_id, start, end, statuses=["APPROVED"]
-        )
-        if approved >= MONTHLY_LEAVE_LIMIT:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{leave.user.full_name if leave.user else 'This user'} has already used all {MONTHLY_LEAVE_LIMIT} leaves for this month.",
-            )
 
     leave.status = body.status
     leave.reviewed_by = admin.id

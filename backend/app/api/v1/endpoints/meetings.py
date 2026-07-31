@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from app.db.base import get_db
 from app.models.user import User
 from app.models.meeting import Meeting, MeetingAssignee
-from app.schemas.meeting import CreateMeetingRequest, MeetingResponse
+from app.schemas.meeting import CreateMeetingRequest, UpdateMeetingRequest, MeetingResponse
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 
 router = APIRouter()
@@ -19,6 +19,8 @@ def _serialize(m: Meeting) -> MeetingResponse:
         description=m.description,
         date=m.date,
         start_time=m.start_time,
+        end_time=m.end_time,
+        meeting_link=m.meeting_link,
         created_by=str(m.created_by),
         created_by_name=m.creator.full_name if m.creator else None,
         assignee_ids=[str(a.user_id) for a in m.assignees],
@@ -56,6 +58,8 @@ async def create_meeting(
         description=body.description,
         date=body.date,
         start_time=body.start_time,
+        end_time=body.end_time,
+        meeting_link=body.meeting_link,
         created_by=admin.id,
     )
     db.add(meeting)
@@ -69,6 +73,38 @@ async def create_meeting(
 
     result = await db.execute(
         select(Meeting).where(Meeting.id == meeting.id).options(selectinload(Meeting.assignees))
+    )
+    m = result.scalar_one()
+    return _serialize(m)
+
+
+@router.put("/{meeting_id}", response_model=MeetingResponse)
+async def update_meeting(
+    meeting_id: str,
+    body: UpdateMeetingRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    result = await db.execute(select(Meeting).where(Meeting.id == meeting_id))
+    meeting = result.scalar_one_or_none()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(meeting, field, value)
+
+    # Sync assignees if provided
+    if body.assignee_ids is not None:
+        await db.execute(sa_delete(MeetingAssignee).where(MeetingAssignee.meeting_id == meeting_id))
+        for uid in body.assignee_ids:
+            db.add(MeetingAssignee(meeting_id=meeting.id, user_id=uid))
+
+    await db.commit()
+    await db.refresh(meeting)
+
+    result = await db.execute(
+        select(Meeting).where(Meeting.id == meeting_id).options(selectinload(Meeting.assignees))
     )
     m = result.scalar_one()
     return _serialize(m)
