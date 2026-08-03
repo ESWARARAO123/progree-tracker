@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -19,6 +19,7 @@ class User(Base):
     designation = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
     current_project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
+    preferences = Column(JSONB, nullable=True)
 
     role = relationship("Role", lazy="joined")
     current_project = relationship("Project", foreign_keys=[current_project_id], lazy="joined")

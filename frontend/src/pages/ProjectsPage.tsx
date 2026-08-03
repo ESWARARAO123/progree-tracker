@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Check, X, Clock } from 'lucide-react';
 import { NewProjectModal } from '../components/NewProjectModal';
@@ -13,20 +13,19 @@ export const ProjectsPage: React.FC = () => {
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = currentUser.role === 'ADMIN';
   const pendingRequests = projectRequests.filter(r => r.status === 'PENDING');
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (menuProjectId && !(e.target as HTMLElement).closest('[data-project-menu]')) {
         setMenuProjectId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [menuProjectId]);
 
   if (loading) {
     return (
@@ -151,7 +150,7 @@ export const ProjectsPage: React.FC = () => {
                     </span>
 
                     {isAdmin && (
-                      <div className="relative" ref={menuRef}>
+                      <div className="relative" data-project-menu>
                         <button
                           onClick={() => setMenuProjectId(menuProjectId === p.id ? null : p.id)}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition"

@@ -64,7 +64,7 @@ export const CalendarPage: React.FC = () => {
       holiday,
       hasMorning: !!userUpdate?.morningSubmittedAt,
       hasEvening: !!userUpdate?.eveningSubmittedAt,
-      onLeave: userLeave?.status === 'APPROVED',
+      approvedRequest: userLeave?.status === 'APPROVED' ? userLeave : undefined,
       isToday: dateStr === today,
       isFuture: dateStr > today,
       dayMeetings: meetings.filter(m => m.date === dateStr),
@@ -154,6 +154,14 @@ export const CalendarPage: React.FC = () => {
         <div className="flex items-center space-x-2">
           <span className="w-3 h-3 rounded-full bg-orange-500" />
           <span>Approved Leave</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="w-3 h-3 rounded-full bg-violet-500" />
+          <span>Approved WFH</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="w-3 h-3 rounded-full bg-sky-500" />
+          <span>Approved WFBO</span>
         </div>
         <div className="flex items-center space-x-2">
           <span className="w-3 h-3 rounded-full bg-indigo-500" />
@@ -248,11 +256,28 @@ export const CalendarPage: React.FC = () => {
                     </span>
                   )}
 
-                  {status.onLeave && (
-                    <span className="text-[9px] font-bold bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded block">
-                      🌴 On Leave
-                    </span>
-                  )}
+                  {status.approvedRequest && (() => {
+                    const rt = status.approvedRequest!.requestType;
+                    if (rt === 'WFH') {
+                      return (
+                        <span className="text-[9px] font-bold bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded block">
+                          🏠 WFH Approved
+                        </span>
+                      );
+                    }
+                    if (rt === 'WFBO') {
+                      return (
+                        <span className="text-[9px] font-bold bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded block">
+                          🏢 WFBO Approved
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-[9px] font-bold bg-orange-500/20 text-orange-300 px-1.5 py-0.5 rounded block">
+                        🌴 On Leave
+                      </span>
+                    );
+                  })()}
 
                    {status.dayMeetings.map(m => (
                      <button

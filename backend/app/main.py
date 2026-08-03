@@ -25,6 +25,9 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS current_project_id UUID REFERENCES projects(id)"
         ))
         await conn.execute(sa_text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferences JSONB"
+        ))
+        await conn.execute(sa_text(
             "ALTER TABLE task_updates ADD COLUMN IF NOT EXISTS morning_task_title TEXT"
         ))
         await conn.execute(sa_text(
@@ -35,6 +38,9 @@ async def lifespan(app: FastAPI):
         ))
         await conn.execute(sa_text(
             "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS meeting_link VARCHAR(500)"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TYPE request_type_enum ADD VALUE IF NOT EXISTS 'WFBO'"
         ))
 
     async with async_session() as db:

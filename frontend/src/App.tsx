@@ -14,7 +14,6 @@ import { UsersPage } from './pages/UsersPage';
 import { LoginPage } from './pages/LoginPage';
 import { MorningUpdateModal } from './components/MorningUpdateModal';
 import { EveningUpdateModal } from './components/EveningUpdateModal';
-import { ProjectSelectionModal } from './components/ProjectSelectionModal';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -76,7 +75,6 @@ const AppShell: React.FC = () => {
 
       <MorningUpdateModal isOpen={isMorningOpen} onClose={() => setIsMorningOpen(false)} />
       <EveningUpdateModal isOpen={isEveningOpen} onClose={() => setIsEveningOpen(false)} />
-      <ProjectSelectionModal />
     </div>
   );
 };

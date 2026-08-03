@@ -12,7 +12,7 @@ class LeaveRequest(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    request_type = Column(SAEnum("LEAVE", "WFH", name="request_type_enum", create_type=False), nullable=False)
+    request_type = Column(SAEnum("LEAVE", "WFH", "WFBO", name="request_type_enum", create_type=False), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     reason = Column(Text, nullable=False)

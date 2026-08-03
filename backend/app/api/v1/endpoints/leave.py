@@ -16,6 +16,14 @@ router = APIRouter()
 
 MONTHLY_LEAVE_LIMIT = 2
 
+VALID_REQUEST_TYPES = ("LEAVE", "WFH", "WFBO")
+
+REQUEST_TYPE_LABELS = {
+    "LEAVE": "Leave",
+    "WFH": "Work From Home",
+    "WFBO": "Work From Bellandur Office",
+}
+
 
 def _month_range(ref: date) -> tuple[date, date]:
     month_start = ref.replace(day=1)
@@ -26,8 +34,8 @@ def _month_range(ref: date) -> tuple[date, date]:
     return month_start, next_month
 
 
-async def _count_leaves_in_month(
-    db: AsyncSession, user_id, start: date, end: date, statuses: list[str]
+async def _count_requests_in_month(
+    db: AsyncSession, user_id, start: date, end: date, statuses: list[str], request_type: str
 ) -> int:
     result = await db.execute(
         select(func.count()).select_from(LeaveRequest).where(
@@ -35,6 +43,7 @@ async def _count_leaves_in_month(
             LeaveRequest.start_date >= start,
             LeaveRequest.start_date < end,
             LeaveRequest.status.in_(statuses),
+            LeaveRequest.request_type == request_type,
         )
     )
     return result.scalar_one()
@@ -83,14 +92,18 @@ async def leave_balance(
 ):
     today = date.today()
     start, end = _month_range(today)
-    used = await _count_leaves_in_month(
-        db, user.id, start, end, statuses=["PENDING", "APPROVED"]
-    )
+    statuses = ["PENDING", "APPROVED"]
+    used_leave = await _count_requests_in_month(db, user.id, start, end, statuses, "LEAVE")
+    used_wfh = await _count_requests_in_month(db, user.id, start, end, statuses, "WFH")
+    used_wfbo = await _count_requests_in_month(db, user.id, start, end, statuses, "WFBO")
     return LeaveBalanceResponse(
         total_allowed=30,
-        used=used,
-        available=max(0, 30 - used),
+        used=used_leave,
+        available=max(0, 30 - used_leave),
         month=today.strftime("%B %Y"),
+        used_leave=used_leave,
+        used_wfh=used_wfh,
+        used_wfbo=used_wfbo,
     )
 
 
@@ -103,9 +116,16 @@ async def apply_leave(
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="End date cannot be before start date.")
 
+    request_type = body.request_type or "LEAVE"
+    if request_type not in VALID_REQUEST_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid request type '{request_type}'. Must be one of: {', '.join(VALID_REQUEST_TYPES)}.",
+        )
+
     leave = LeaveRequest(
         user_id=user.id,
-        request_type="LEAVE",
+        request_type=request_type,
         start_date=body.start_date,
         end_date=body.end_date,
         reason=body.reason,
@@ -113,12 +133,13 @@ async def apply_leave(
     db.add(leave)
     await db.flush()
 
+    label = REQUEST_TYPE_LABELS.get(request_type, request_type)
     admins = await get_admin_users(db)
     for admin in admins:
         await create_notification(
             db, str(admin.id),
-            "New Leave Request",
-            f"{user.full_name} has submitted a leave request from {body.start_date} to {body.end_date}.",
+            f"New {label} Request",
+            f"{user.full_name} has submitted a {label} request from {body.start_date} to {body.end_date}.",
             link="/leave",
         )
 
@@ -175,7 +196,7 @@ async def review_leave_request(
 
     await create_notification(
         db, str(leave.user_id),
-        f"Leave Request {body.status}",
+        f"{REQUEST_TYPE_LABELS.get(leave.request_type, leave.request_type)} Request {body.status}",
         f"Your {leave.request_type} request ({leave.start_date} to {leave.end_date}) has been {body.status} by {admin.full_name}.",
         link="/leave",
     )

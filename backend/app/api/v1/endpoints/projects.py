@@ -248,6 +248,24 @@ async def request_project_access(
     return {"status": "ok", "request_id": str(req.id)}
 
 
+@router.post("/request-to-join", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def request_to_join_project(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    admins = await get_admin_users(db)
+    for admin in admins:
+        await create_notification(
+            db, str(admin.id),
+            "Project Assignment Request",
+            f"{user.full_name} ({user.email}) has no project assigned and requested to be added to a project.",
+            link="/projects",
+        )
+
+    await db.commit()
+    return {"status": "ok", "message": "Request sent to admins"}
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(
     project_id: str,

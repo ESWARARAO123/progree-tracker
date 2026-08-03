@@ -3,7 +3,7 @@ from sqlalchemy import select, delete, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import get_db
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, generate_random_password
 from app.models.user import User
 from app.models.role import Role
 from app.models.project import Project
@@ -14,10 +14,25 @@ from app.models.task import Task
 from app.models.task_update import TaskUpdate
 from app.models.notification import Notification
 from app.models.meeting import Meeting, MeetingAssignee
-from app.schemas.user import UserResponse, CreateUserRequest, UpdateUserRequest
+from app.schemas.user import UserResponse, CreateUserRequest, UpdateUserRequest, CreateUserResponse, UpdatePreferencesRequest
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 
 router = APIRouter()
+
+
+def serialize_user(u: User, **extra) -> UserResponse:
+    return UserResponse(
+        id=str(u.id),
+        full_name=u.full_name,
+        email=u.email,
+        role=u.role.name,
+        department=u.department,
+        designation=u.designation,
+        is_active=u.is_active,
+        current_project_id=str(u.current_project_id) if u.current_project_id else None,
+        preferences=u.preferences or {},
+        **extra,
+    )
 
 
 @router.get("/", response_model=list[UserResponse])
@@ -27,22 +42,10 @@ async def list_users(
 ):
     result = await db.execute(select(User))
     users = result.scalars().all()
-    return [
-        UserResponse(
-            id=str(u.id),
-            full_name=u.full_name,
-            email=u.email,
-            role=u.role.name,
-            department=u.department,
-            designation=u.designation,
-            is_active=u.is_active,
-            current_project_id=str(u.current_project_id) if u.current_project_id else None,
-        )
-        for u in users
-    ]
+    return [serialize_user(u) for u in users]
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     body: CreateUserRequest,
     db: AsyncSession = Depends(get_db),
@@ -63,11 +66,17 @@ async def create_user(
             detail=f"Invalid role: {body.role}. Must be ADMIN or EMPLOYEE",
         )
 
+    generated_password = None
+    password = body.password
+    if not password or not password.strip():
+        generated_password = generate_random_password()
+        password = generated_password
+
     user = User(
         role_id=role.id,
         full_name=body.full_name,
         email=body.email,
-        password_hash=get_password_hash(body.password),
+        password_hash=get_password_hash(password),
         department=body.department,
         designation=body.designation,
     )
@@ -75,7 +84,7 @@ async def create_user(
     await db.commit()
     await db.refresh(user)
 
-    return UserResponse(
+    return CreateUserResponse(
         id=str(user.id),
         full_name=user.full_name,
         email=user.email,
@@ -84,6 +93,8 @@ async def create_user(
         designation=user.designation,
         is_active=user.is_active,
         current_project_id=str(user.current_project_id) if user.current_project_id else None,
+        preferences=user.preferences or {},
+        generated_password=generated_password,
     )
 
 
@@ -102,16 +113,20 @@ async def toggle_user_status(
     await db.commit()
     await db.refresh(user)
 
-    return UserResponse(
-        id=str(user.id),
-        full_name=user.full_name,
-        email=user.email,
-        role=user.role.name,
-        department=user.department,
-        designation=user.designation,
-        is_active=user.is_active,
-        current_project_id=str(user.current_project_id) if user.current_project_id else None,
-    )
+    return serialize_user(user)
+
+
+@router.patch("/me/preferences", response_model=UserResponse)
+async def update_my_preferences(
+    body: UpdatePreferencesRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    user.preferences = {**(user.preferences or {}), **body.preferences}
+    await db.commit()
+    await db.refresh(user)
+
+    return serialize_user(user)
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
@@ -153,16 +168,7 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
 
-    return UserResponse(
-        id=str(user.id),
-        full_name=user.full_name,
-        email=user.email,
-        role=user.role.name,
-        department=user.department,
-        designation=user.designation,
-        is_active=user.is_active,
-        current_project_id=str(user.current_project_id) if user.current_project_id else None,
-    )
+    return serialize_user(user)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

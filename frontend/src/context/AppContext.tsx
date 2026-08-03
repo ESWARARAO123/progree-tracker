@@ -24,6 +24,7 @@ interface AppContextType {
   deleteProject: (projectId: string) => Promise<void>;
   selectProject: (projectId: string) => Promise<void>;
   requestProjectAccess: (projectId: string) => Promise<void>;
+  requestToJoinProject: () => Promise<void>;
   reviewProjectRequest: (requestId: string, status: 'APPROVED' | 'REJECTED') => Promise<void>;
   createMeeting: (data: { title: string; description?: string; date: string; startTime: string; endTime?: string; meetingLink?: string; assigneeIds: string[] }) => Promise<void>;
   updateMeeting: (meetingId: string, data: { title?: string; description?: string; date?: string; startTime?: string; endTime?: string; meetingLink?: string; assigneeIds?: string[] }) => Promise<void>;
@@ -36,8 +37,10 @@ interface AppContextType {
   createTask: (task: any) => Promise<void>;
   updateTaskStatus: (taskId: string, status: Task['status']) => Promise<void>;
   updateTask: (taskId: string, data: any) => Promise<void>;
-  applyLeave: (data: { startDate: string; endDate: string; reason: string }) => Promise<void>;
+  applyLeave: (data: { requestType?: string; startDate: string; endDate: string; reason: string }) => Promise<void>;
   reviewLeaveRequest: (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
+  updatePreferences: (preferences: Record<string, any>) => Promise<void>;
   trigger10PmScan: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
@@ -54,6 +57,7 @@ function mapUser(u: any): User {
     designation: u.designation || '',
     isActive: u.is_active ?? u.isActive ?? true,
     currentProjectId: u.current_project_id || u.currentProjectId,
+    preferences: u.preferences || {},
   };
 }
 
@@ -153,6 +157,9 @@ function mapLeaveBalance(b: any): LeaveBalance {
     used: b.used ?? 0,
     available: b.available ?? 0,
     month: b.month || '',
+    usedLeave: b.used_leave ?? b.usedLeave ?? b.used ?? 0,
+    usedWfh: b.used_wfh ?? b.usedWfh ?? 0,
+    usedWfbo: b.used_wfbo ?? b.usedWfbo ?? 0,
   };
 }
 
@@ -343,6 +350,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: data.status,
       progress_percentage: data.progressPercentage,
       owner_id: data.ownerId,
+      assigned_user_ids: data.assignedUserIds,
     });
     setProjects(prev => prev.map(p => p.id === projectId ? mapProject(result) : p));
   }, [token]);
@@ -363,6 +371,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!token) return;
     await api.requestProjectAccess(token, projectId);
     alert('Access request sent. You will be notified once an admin reviews it.');
+  }, [token]);
+
+  const requestToJoinProject = useCallback(async () => {
+    if (!token) return;
+    await api.requestProjectAdd(token);
   }, [token]);
 
   const reviewProjectRequest = useCallback(async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
@@ -467,9 +480,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks(prev => prev.map(t => t.id === mapped.id ? mapped : t));
   }, [token]);
 
-  const applyLeave = useCallback(async (data: { startDate: string; endDate: string; reason: string }) => {
+  const applyLeave = useCallback(async (data: { requestType?: string; startDate: string; endDate: string; reason: string }) => {
     if (!token) return;
     const result = await api.applyLeave(token, {
+      request_type: data.requestType || 'LEAVE',
       start_date: data.startDate,
       end_date: data.endDate,
       reason: data.reason,
@@ -490,6 +504,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const bRes = await api.getLeaveSummary(token);
       setLeaveBalance(mapLeaveBalance(bRes));
     } catch { /* ignore */ }
+  }, [token]);
+
+  const changePassword = useCallback(async (newPassword: string) => {
+    if (!token) return;
+    await api.changePassword(token, {
+      new_password: newPassword,
+    });
+  }, [token]);
+
+  const updatePreferences = useCallback(async (preferences: Record<string, any>) => {
+    if (!token) return;
+    const res = await api.updateMyPreferences(token, preferences);
+    setCurrentUser(prev => ({ ...prev, ...mapUser(res) }));
   }, [token]);
 
   const markNotificationRead = useCallback(async (id: string) => {
@@ -535,6 +562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteProject,
       selectProject,
       requestProjectAccess,
+      requestToJoinProject,
       reviewProjectRequest,
       createMeeting,
       updateMeeting,
@@ -547,6 +575,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateTask,
       applyLeave,
       reviewLeaveRequest,
+      changePassword,
+      updatePreferences,
       trigger10PmScan,
       markNotificationRead,
       markAllNotificationsRead,

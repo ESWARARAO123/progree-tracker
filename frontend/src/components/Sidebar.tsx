@@ -17,7 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openM
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'tasks', label: 'Task Board', icon: CheckSquare },
     { id: 'calendar', label: 'Calendar & Attendance', icon: CalendarIcon },
-    { id: 'leave', label: 'Leave Management', icon: FileText },
+    { id: 'leave', label: 'Leave & Requests', icon: FileText },
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
     ...(currentUser.role === 'ADMIN' ? [
       { id: 'users', label: 'User Management', icon: Users },

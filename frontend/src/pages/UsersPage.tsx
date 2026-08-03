@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
-import { UserPlus, Shield, User as UserIcon, ToggleLeft, ToggleRight, Pencil, Trash2, X } from 'lucide-react';
+import { UserPlus, Shield, User as UserIcon, ToggleLeft, ToggleRight, Pencil, Trash2, X, RefreshCw, KeyRound, Copy } from 'lucide-react';
 
 interface User {
   id: string;
@@ -13,6 +13,24 @@ interface User {
   is_active: boolean;
 }
 
+function generateRandomPassword(len = 10): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+  const result = new Array(len);
+  const cryptoObj = window.crypto || (window as any).msCrypto;
+  if (cryptoObj && cryptoObj.getRandomValues) {
+    const buf = new Uint32Array(len);
+    cryptoObj.getRandomValues(buf);
+    for (let i = 0; i < len; i++) {
+      result[i] = chars[buf[i] % chars.length];
+    }
+  } else {
+    for (let i = 0; i < len; i++) {
+      result[i] = chars[Math.floor(Math.random() * chars.length)];
+    }
+  }
+  return result.join('');
+}
+
 export const UsersPage: React.FC = () => {
   const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -21,6 +39,7 @@ export const UsersPage: React.FC = () => {
   const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'EMPLOYEE', department: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [createdPassword, setCreatedPassword] = useState('');
 
   // Edit state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -55,13 +74,14 @@ export const UsersPage: React.FC = () => {
     setError('');
     setSubmitting(true);
     try {
-      await api.createUser(token!, {
+      const res = await api.createUser(token!, {
         full_name: form.full_name,
         email: form.email,
-        password: form.password,
+        password: form.password || undefined,
         role: form.role,
         department: form.department || undefined,
       });
+      setCreatedPassword(res.generated_password || form.password);
       setForm({ full_name: '', email: '', password: '', role: 'EMPLOYEE', department: '' });
       setShowForm(false);
       await loadUsers();
@@ -161,6 +181,34 @@ export const UsersPage: React.FC = () => {
         </button>
       </div>
 
+      {createdPassword && (
+        <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start space-x-3">
+            <KeyRound className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-300">User created! Share this password with them:</p>
+              <p className="text-base font-mono font-bold text-white mt-1">{createdPassword}</p>
+              <p className="text-xs text-emerald-200/60 mt-1">They can change it after logging in via the Change Password option.</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              onClick={() => { navigator.clipboard?.writeText(createdPassword); }}
+              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition flex items-center space-x-1.5"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy</span>
+            </button>
+            <button
+              onClick={() => setCreatedPassword('')}
+              className="px-3 py-2 text-xs text-slate-300 hover:text-white transition"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {showForm && (
         <form onSubmit={handleCreate} className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
           <h3 className="text-lg font-semibold text-white mb-2">Create New User</h3>
@@ -186,11 +234,26 @@ export const UsersPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
-              <input
-                type="password" required value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              />
+              <div className="flex space-x-2">
+                <input
+                  type="text" value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="Leave blank to auto-generate"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, password: generateRandomPassword() })}
+                  className="shrink-0 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition flex items-center space-x-1.5"
+                  title="Generate a random password"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Generate</span>
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">
+                Share the password with the user. They can change it after logging in.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Role</label>
@@ -306,12 +369,23 @@ export const UsersPage: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-300 mb-1">
                   New Password <span className="text-slate-500 font-normal">(Leave blank to keep unchanged)</span>
                 </label>
-                <input
-                  type="password" value={editForm.password}
-                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
-                />
+                <div className="flex space-x-2">
+                  <input
+                    type="text" value={editForm.password}
+                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, password: generateRandomPassword() })}
+                    className="shrink-0 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition flex items-center space-x-1.5"
+                    title="Generate a random password"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Generate</span>
+                  </button>
+                </div>
               </div>
 
               <div className="flex justify-end space-x-3 pt-3 border-t border-slate-800">

@@ -10,13 +10,14 @@ export interface User {
   avatarUrl?: string;
   isActive: boolean;
   currentProjectId?: string;
+  preferences?: Record<string, any>;
 }
 
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type TaskStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'BLOCKED' | 'COMPLETED';
 export type ProjectStatus = 'PLANNING' | 'IN_PROGRESS' | 'ON_HOLD' | 'COMPLETED' | 'ARCHIVED';
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LEAVE' | 'WFH' | 'HALF_DAY' | 'LATE_LOGIN';
-export type RequestType = 'LEAVE';
+export type RequestType = 'LEAVE' | 'WFH' | 'WFBO';
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export interface LeaveBalance {
@@ -24,6 +25,9 @@ export interface LeaveBalance {
   used: number;
   available: number;
   month: string;
+  usedLeave: number;
+  usedWfh: number;
+  usedWfbo: number;
 }
 
 export interface Meeting {

@@ -12,7 +12,7 @@ CREATE TYPE priority_enum AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
 CREATE TYPE task_status_enum AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'BLOCKED', 'COMPLETED');
 CREATE TYPE project_status_enum AS ENUM ('PLANNING', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'ARCHIVED');
 CREATE TYPE attendance_status_enum AS ENUM ('PRESENT', 'ABSENT', 'LEAVE', 'WFH', 'HALF_DAY', 'LATE_LOGIN');
-CREATE TYPE request_type_enum AS ENUM ('LEAVE', 'WFH');
+CREATE TYPE request_type_enum AS ENUM ('LEAVE', 'WFH', 'WFBO');
 CREATE TYPE request_status_enum AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED');
 
 -- 1. Roles Table
@@ -37,6 +37,7 @@ CREATE TABLE users (
     department VARCHAR(100),
     designation VARCHAR(100),
     is_active BOOLEAN DEFAULT TRUE,
+    preferences JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -119,7 +120,7 @@ CREATE TABLE attendance (
     CONSTRAINT unique_user_attendance_date UNIQUE (user_id, date)
 );
 
--- 8. Leave & WFH Requests Table
+-- 8. Leave, WFH & Work-From-Office Requests Table
 CREATE TABLE leave_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

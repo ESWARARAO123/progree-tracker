@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Clock, Lock, Zap, LogOut, Check, CheckCheck } from 'lucide-react';
+import { Bell, Clock, Lock, Zap, LogOut, Check, CheckCheck, ChevronDown, KeyRound } from 'lucide-react';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const Navbar: React.FC = () => {
   const { currentUser, notifications, trigger10PmScan, markNotificationRead, markAllNotificationsRead } = useApp();
   const { logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -119,24 +122,59 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3 pl-2 border-l border-slate-800">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-white">
-              {currentUser.fullName.charAt(0)}
-            </div>
-            <div className="hidden lg:block text-left">
-              <div className="text-xs font-semibold text-white">{currentUser.fullName}</div>
-              <div className="text-[10px] text-slate-400">{currentUser.email}</div>
-            </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center space-x-3 rounded-xl hover:bg-slate-800/60 px-2 py-1.5 transition"
+            >
+              <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-white">
+                {currentUser.fullName.charAt(0)}
+              </div>
+              <div className="hidden lg:block text-left">
+                <div className="text-xs font-semibold text-white">{currentUser.fullName}</div>
+                <div className="text-[10px] text-slate-400">{currentUser.email}</div>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl p-1.5 z-50">
+                <div className="px-3 py-2 border-b border-slate-800 mb-1">
+                  <div className="text-xs font-semibold text-white">{currentUser.fullName}</div>
+                  <div className="text-[10px] text-slate-400">{currentUser.email}</div>
+                  <div className="text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 w-fit">
+                    {currentUser.role}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowUserMenu(false); setIsPasswordOpen(true); }}
+                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Change Password</span>
+                </button>
+                <button
+                  onClick={logout}
+                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
           </div>
+
           <button
             onClick={logout}
-            className="p-2 rounded-lg bg-slate-800 border border-slate-700/70 hover:bg-rose-500/20 hover:border-rose-500/30 text-slate-400 hover:text-rose-300 transition"
+            className="p-2 rounded-lg bg-slate-800 border border-slate-700/70 hover:bg-rose-500/20 hover:border-rose-500/30 text-slate-400 hover:text-rose-300 transition lg:hidden"
             title="Sign out"
           >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      <ChangePasswordModal isOpen={isPasswordOpen} onClose={() => setIsPasswordOpen(false)} />
     </header>
   );
 };

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Users, CheckCircle2, AlertTriangle, Briefcase, FileCheck, Sun, Moon, ArrowUpRight, TrendingUp, CalendarClock, Clock, ListTodo } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
 import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
+import { ProjectJoinBanner } from '../components/ProjectJoinBanner';
 
 interface Props {
   openMorningModal: () => void;
@@ -367,6 +368,9 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
 
   return (
     <div className="space-y-6 pb-8">
+      {/* Project join notification for employees with no project */}
+      <ProjectJoinBanner />
+
       {/* Top Banner Greeting */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950/40 to-slate-900 border border-slate-800 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="relative z-10 space-y-1">

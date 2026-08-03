@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 
 class CreateLeaveRequest(BaseModel):
+    request_type: str = "LEAVE"
     start_date: date
     end_date: date
     reason: str
@@ -13,6 +14,9 @@ class LeaveBalanceResponse(BaseModel):
     used: int
     available: int
     month: str
+    used_leave: int = 0
+    used_wfh: int = 0
+    used_wfbo: int = 0
 
 
 class ReviewLeaveRequest(BaseModel):

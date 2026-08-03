@@ -7,7 +7,7 @@ from app.db.base import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
 from app.models.user import User
 from app.models.role import Role
-from app.schemas.auth import LoginRequest, TokenResponse, TokenRefreshRequest
+from app.schemas.auth import LoginRequest, TokenResponse, TokenRefreshRequest, ChangePasswordRequest
 from app.schemas.user import UserResponse
 
 router = APIRouter()
@@ -108,4 +108,23 @@ async def me(user: User = Depends(get_current_user)):
         designation=user.designation,
         is_active=user.is_active,
         current_project_id=str(user.current_project_id) if user.current_project_id else None,
+        preferences=user.preferences or {},
     )
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    body: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if len(body.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 6 characters long",
+        )
+
+    user.password_hash = get_password_hash(body.new_password)
+    await db.commit()
+
+    return {"status": "ok", "message": "Password changed successfully"}

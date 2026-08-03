@@ -36,6 +36,15 @@ export async function refreshToken(token: string) {
   return handleResponse(res);
 }
 
+export async function changePassword(token: string, data: { new_password: string }) {
+  const res = await fetch(`${API_BASE}/auth/change-password`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
 // Users
 export async function getUsers(token: string) {
   const res = await fetch(`${API_BASE}/users/`, { headers: authHeaders(token) });
@@ -71,6 +80,13 @@ export async function deleteUser(token: string, userId: string) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }));
     throw new Error(err.detail || 'Request failed');
   }
+}
+
+export async function updateMyPreferences(token: string, preferences: Record<string, any>) {
+  const res = await fetch(`${API_BASE}/users/me/preferences`, {
+    method: 'PATCH', headers: authHeaders(token), body: JSON.stringify({ preferences }),
+  });
+  return handleResponse(res);
 }
 
 // Projects
@@ -117,6 +133,13 @@ export async function selectProject(token: string, projectId: string) {
 
 export async function requestProjectAccess(token: string, projectId: string) {
   const res = await fetch(`${API_BASE}/projects/${projectId}/request`, {
+    method: 'POST', headers: authHeaders(token),
+  });
+  return handleResponse(res);
+}
+
+export async function requestProjectAdd(token: string) {
+  const res = await fetch(`${API_BASE}/projects/request-to-join`, {
     method: 'POST', headers: authHeaders(token),
   });
   return handleResponse(res);
