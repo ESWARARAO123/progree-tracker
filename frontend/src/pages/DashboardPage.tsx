@@ -26,6 +26,10 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
 
   const userTodayUpdate = updates.find(u => u.userId === currentUser.id && u.reportDate === today);
 
+  const myProjects = projects.filter(p =>
+    p.assignedUsers.some(u => u.id === currentUser.id) || p.owner?.id === currentUser.id
+  );
+
   const myTasks = tasks.filter(t => t.assignedTo === currentUser.id);
   const myOverdueTasks = myTasks.filter(t => t.dueDate && t.dueDate < today && t.status !== 'COMPLETED');
   const myTodayTasks = myTasks.filter(t => t.dueDate === today);
@@ -443,14 +447,14 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
               <Briefcase className="w-4 h-4 text-purple-400" />
               <span>My Projects</span>
             </h3>
-            <span className="text-xs text-slate-400">{projects.length} Projects</span>
+            <span className="text-xs text-slate-400">{myProjects.length} Projects</span>
           </div>
 
           <div className="space-y-3">
-            {projects.length === 0 ? (
+            {myProjects.length === 0 ? (
               <p className="text-xs text-slate-500 py-6 text-center">No projects assigned yet.</p>
             ) : (
-              projects.map(p => (
+              myProjects.map(p => (
                 <div key={p.id} className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
                   <div className="flex justify-between items-start">
                     <div>

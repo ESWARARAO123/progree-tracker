@@ -63,7 +63,7 @@ export const ProjectJoinBanner: React.FC = () => {
           </div>
           <div>
             <h3 className="text-sm font-bold text-white">You are not assigned to any project yet</h3>
-            <p className="text-xs text-amber-200/70 mt-0.5">Select a project to join and start working, or request an admin to add you.</p>
+            <p className="text-xs text-amber-200/70 mt-0.5">Select a project you are assigned to, or request access to one and an admin will approve it.</p>
           </div>
         </div>
         <button
@@ -101,31 +101,28 @@ export const ProjectJoinBanner: React.FC = () => {
                     <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                       Request Pending
                     </span>
-                  ) : (
-                    <>
-                      {!isAssigned && (
-                        <button
-                          onClick={() => handleRequest(p.id)}
-                          disabled={isSubmitting}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white transition disabled:opacity-50 flex items-center space-x-1"
-                        >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>Request Access</span>
-                        </button>
+                  ) : isAssigned ? (
+                    <button
+                      onClick={() => handleSelect(p.id)}
+                      disabled={isSubmitting}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-50 flex items-center space-x-1"
+                    >
+                      {isSubmitting ? (
+                        <span className="w-3.5 h-3.5 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                       )}
-                      <button
-                        onClick={() => handleSelect(p.id)}
-                        disabled={isSubmitting}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-50 flex items-center space-x-1"
-                      >
-                        {isSubmitting ? (
-                          <span className="w-3.5 h-3.5 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        )}
-                        <span>{isAssigned ? 'Select' : 'Join'}</span>
-                      </button>
-                    </>
+                      <span>Select</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleRequest(p.id)}
+                      disabled={isSubmitting}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white transition disabled:opacity-50 flex items-center space-x-1"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>{isSubmitting ? 'Requesting...' : 'Request Access'}</span>
+                    </button>
                   )}
                 </div>
               </div>

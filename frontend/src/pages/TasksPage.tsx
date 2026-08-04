@@ -297,13 +297,6 @@ export const TasksPage: React.FC = () => {
                     }`}>
                       {t.priority}
                     </span>
-                    <button
-                      onClick={() => setEditingTask(t)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition"
-                      title="Edit Task"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
 
@@ -378,10 +371,6 @@ export const TasksPage: React.FC = () => {
           })
         )}
       </div>
-
-      {editingTask && (
-        <EditTaskModal isOpen={!!editingTask} onClose={() => setEditingTask(null)} task={editingTask} />
-      )}
     </div>
   );
 };

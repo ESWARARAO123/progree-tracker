@@ -153,8 +153,8 @@ async def update_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if user.role.name != "ADMIN" and task.assigned_to != user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    if user.role.name != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only admins can edit tasks")
 
     if body.title is not None:
         task.title = body.title

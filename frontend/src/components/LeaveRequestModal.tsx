@@ -59,14 +59,10 @@ export const LeaveRequestModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {isLeave && leaveBalance && (
-            <div className={`flex items-center justify-between rounded-xl px-4 py-3 border text-xs ${
-              leaveBalance.available > 0
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-            }`}>
+            <div className="flex items-center justify-between rounded-xl px-4 py-3 border text-xs bg-slate-800/60 border-slate-700 text-slate-300">
               <span className="font-semibold">{leaveBalance.month}</span>
               <span className="font-bold">
-                {leaveBalance.available} of {leaveBalance.totalAllowed} leaves available
+                {leaveBalance.usedLeave} leaves used this month
               </span>
             </div>
           )}

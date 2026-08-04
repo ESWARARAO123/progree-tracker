@@ -47,6 +47,203 @@ export const ProjectsPage: React.FC = () => {
     }
   };
 
+  const renderProjectCard = (p: Project) => {
+    const isMine = p.assignedUsers.some(u => u.id === currentUser.id);
+    const isSelected = currentUser.currentProjectId === p.id;
+    const isOwner = p.owner?.id === currentUser.id;
+    const requested = alreadyRequested(p.id);
+
+    return (
+      <div key={p.id} className={`glass-panel p-5 rounded-2xl border space-y-4 flex flex-col justify-between transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
+        <div className="space-y-3">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center space-x-2">
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                p.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
+                p.priority === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                'bg-blue-500/20 text-blue-300 border-blue-500/30'
+              }`}>
+                {p.priority} PRIORITY
+              </span>
+              {isOwner && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  OWNED
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                {p.status}
+              </span>
+
+              {isAdmin && (
+                <div className="relative" data-project-menu>
+                  <button
+                    onClick={() => setMenuProjectId(menuProjectId === p.id ? null : p.id)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition"
+                  >
+                    <MoreVertical className="w-3.5 h-3.5" />
+                  </button>
+
+                  {menuProjectId === p.id && (
+                    <div className="absolute right-0 top-8 w-40 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 p-1.5">
+                      <button
+                        onClick={() => { setEditingProject(p); setMenuProjectId(null); }}
+                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-700 transition"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Edit Project</span>
+                      </button>
+                      <button
+                        onClick={() => { setDeletingProject(p); setMenuProjectId(null); }}
+                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Project</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-base text-white">{p.name}</h3>
+            <p className="text-xs text-slate-400 mt-1 line-clamp-2">{p.description}</p>
+          </div>
+
+          {p.owner && (
+            <div className="flex items-center space-x-2 text-[11px] text-slate-400 bg-slate-800/50 border border-slate-700/60 rounded-lg px-2.5 py-1.5">
+              <UserCircle2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              <span className="truncate">Owner: <span className="text-slate-200 font-semibold">{p.owner.fullName}</span></span>
+            </div>
+          )}
+
+          {/* Progress bar */}
+          <div className="space-y-1 pt-1">
+            <div className="flex justify-between text-xs text-slate-400">
+              <span>Overall Progress</span>
+              <span className="font-bold text-white">{p.progressPercentage}%</span>
+            </div>
+            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full" style={{ width: `${p.progressPercentage}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <div className="flex items-center space-x-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>{p.startDate} - {p.endDate}</span>
+            </div>
+
+            {p.overdueTasksCount > 0 && (
+              <span className="flex items-center space-x-1 text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded text-[10px]">
+                <AlertCircle className="w-3 h-3" />
+                <span>{p.overdueTasksCount} Overdue</span>
+              </span>
+            )}
+          </div>
+
+          {!isAdmin && (
+            <div className="flex items-center gap-2">
+              {isSelected ? (
+                <span className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Active Project</span>
+                </span>
+              ) : isMine || isOwner ? (
+                <button
+                  onClick={() => selectProject(p.id)}
+                  className="flex-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Select Project</span>
+                </button>
+              ) : requested ? (
+                <span className="flex-1 text-center px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                  Request Pending...
+                </span>
+              ) : (
+                <button
+                  onClick={() => handleRequest(p.id)}
+                  disabled={requestingId === p.id}
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition disabled:opacity-50"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{requestingId === p.id ? 'Requesting...' : 'Request Access'}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCompactProjectCard = (p: Project) => {
+    const isSelected = currentUser.currentProjectId === p.id;
+    const requested = alreadyRequested(p.id);
+
+    return (
+      <div key={p.id} className={`glass-panel p-4 rounded-2xl border space-y-3 transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0">
+            <h4 className="font-semibold text-sm text-white truncate">{p.name}</h4>
+            <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{p.description || 'No description'}</p>
+          </div>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 shrink-0">{p.status}</span>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex justify-between text-[10px] text-slate-400">
+            <span>Progress</span>
+            <span className="font-semibold text-white">{p.progressPercentage}%</span>
+          </div>
+          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full" style={{ width: `${p.progressPercentage}%` }} />
+          </div>
+        </div>
+
+        <div className="text-[10px] text-slate-500 flex items-center space-x-1">
+          <Calendar className="w-3 h-3" />
+          <span>{p.startDate} - {p.endDate}</span>
+        </div>
+
+        <div className="pt-2 border-t border-slate-800">
+          {isSelected ? (
+            <span className="flex items-center justify-center space-x-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Active Project</span>
+            </span>
+          ) : requested ? (
+            <span className="block text-center px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+              Request Pending...
+            </span>
+          ) : (
+            <button
+              onClick={() => handleRequest(p.id)}
+              disabled={requestingId === p.id}
+              className="w-full px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-semibold flex items-center justify-center space-x-1.5 transition disabled:opacity-50"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{requestingId === p.id ? 'Requesting...' : 'Request Access'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const isMemberOf = (p: Project) =>
+    p.assignedUsers.some(u => u.id === currentUser.id) || p.owner?.id === currentUser.id;
+
+  const myProjects = projects.filter(isMemberOf);
+  const otherProjects = projects.filter(p => !isMemberOf(p));
+
   return (
     <div className="space-y-6 pb-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -118,149 +315,48 @@ export const ProjectsPage: React.FC = () => {
       )}
 
       {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map(p => {
-          const isMine = p.assignedUsers.some(u => u.id === currentUser.id);
-          const isSelected = currentUser.currentProjectId === p.id;
-          const isOwner = p.owner?.id === currentUser.id;
-          const requested = alreadyRequested(p.id);
-
-          return (
-            <div key={p.id} className={`glass-panel p-5 rounded-2xl border space-y-4 flex flex-col justify-between transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
-              <div className="space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center space-x-2">
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                      p.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
-                      p.priority === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-                      'bg-blue-500/20 text-blue-300 border-blue-500/30'
-                    }`}>
-                      {p.priority} PRIORITY
-                    </span>
-                    {isOwner && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                        OWNED
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                      {p.status}
-                    </span>
-
-                    {isAdmin && (
-                      <div className="relative" data-project-menu>
-                        <button
-                          onClick={() => setMenuProjectId(menuProjectId === p.id ? null : p.id)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-
-                        {menuProjectId === p.id && (
-                          <div className="absolute right-0 top-8 w-40 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 p-1.5">
-                            <button
-                              onClick={() => { setEditingProject(p); setMenuProjectId(null); }}
-                              className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-700 transition"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-purple-400" />
-                              <span>Edit Project</span>
-                            </button>
-                            <button
-                              onClick={() => { setDeletingProject(p); setMenuProjectId(null); }}
-                              className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete Project</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-base text-white">{p.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{p.description}</p>
-                </div>
-
-                {p.owner && (
-                  <div className="flex items-center space-x-2 text-[11px] text-slate-400 bg-slate-800/50 border border-slate-700/60 rounded-lg px-2.5 py-1.5">
-                    <UserCircle2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                    <span className="truncate">Owner: <span className="text-slate-200 font-semibold">{p.owner.fullName}</span></span>
-                  </div>
-                )}
-
-                {/* Progress bar */}
-                <div className="space-y-1 pt-1">
-                  <div className="flex justify-between text-xs text-slate-400">
-                    <span>Overall Progress</span>
-                    <span className="font-bold text-white">{p.progressPercentage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full" style={{ width: `${p.progressPercentage}%` }} />
-                  </div>
-                </div>
+      {isAdmin ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.map(renderProjectCard)}
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {myProjects.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <Briefcase className="w-4 h-4 text-purple-400" />
+                  <span>My Projects</span>
+                </h3>
+                <span className="text-xs text-slate-400">{myProjects.length} Projects</span>
               </div>
-
-              <div className="space-y-3">
-                <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                  <div className="flex items-center space-x-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{p.startDate} - {p.endDate}</span>
-                  </div>
-
-                  {p.overdueTasksCount > 0 && (
-                    <span className="flex items-center space-x-1 text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded text-[10px]">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>{p.overdueTasksCount} Overdue</span>
-                    </span>
-                  )}
-                </div>
-
-                {!isAdmin && (
-                  <div className="flex items-center gap-2">
-                    {isSelected ? (
-                      <span className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Active Project</span>
-                      </span>
-                    ) : isMine || isOwner ? (
-                      <button
-                        onClick={() => selectProject(p.id)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Select Project</span>
-                      </button>
-                    ) : requested ? (
-                      <span className="flex-1 text-center px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                        Request Pending...
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleRequest(p.id)}
-                        disabled={requestingId === p.id}
-                        className="flex-1 px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition disabled:opacity-50"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>{requestingId === p.id ? 'Requesting...' : 'Request Access'}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {myProjects.map(renderProjectCard)}
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {projects.length === 0 && (
-        <div className="text-center py-16 glass-panel rounded-2xl border border-slate-800">
-          <Briefcase className="w-12 h-12 mx-auto text-slate-600" />
-          <p className="text-sm text-slate-400 mt-3">No projects found.</p>
+          {otherProjects.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-slate-500" />
+                  <span>Other Projects</span>
+                </h3>
+                <span className="text-xs text-slate-400">{otherProjects.length} Projects</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {otherProjects.map(renderCompactProjectCard)}
+              </div>
+            </div>
+          )}
+
+          {myProjects.length === 0 && otherProjects.length === 0 && (
+            <div className="text-center py-16 glass-panel rounded-2xl border border-slate-800">
+              <Briefcase className="w-12 h-12 mx-auto text-slate-600" />
+              <p className="text-sm text-slate-400 mt-3">No projects found.</p>
+            </div>
+          )}
         </div>
       )}
 

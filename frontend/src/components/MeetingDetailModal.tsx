@@ -11,7 +11,8 @@ interface Props {
 }
 
 export const MeetingDetailModal: React.FC<Props> = ({ isOpen, onClose, meeting, onEdit }) => {
-  const { deleteMeeting, users } = useApp();
+  const { deleteMeeting, users, currentUser } = useApp();
+  const isAdmin = currentUser.role === 'ADMIN';
 
   if (!isOpen) return null;
 
@@ -120,13 +121,15 @@ export const MeetingDetailModal: React.FC<Props> = ({ isOpen, onClose, meeting, 
         </div>
 
         <div className="bg-slate-800/50 border-t border-slate-700 p-4 flex justify-between items-center">
-          <button
-            onClick={handleDelete}
-            className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 border border-rose-500/30 transition"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete</span>
-          </button>
+          {isAdmin ? (
+            <button
+              onClick={handleDelete}
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 border border-rose-500/30 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
+            </button>
+          ) : <span />}
           <div className="flex space-x-3">
             <button
               type="button"
@@ -135,13 +138,15 @@ export const MeetingDetailModal: React.FC<Props> = ({ isOpen, onClose, meeting, 
             >
               Close
             </button>
-            <button
-              onClick={onEdit}
-              className="flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Edit</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={onEdit}
+                className="flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

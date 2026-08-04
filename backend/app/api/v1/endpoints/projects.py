@@ -194,7 +194,10 @@ async def select_project(
     )
     is_owner = project.owner_id == user.id
     if not is_owner and not assign_check.scalar_one_or_none():
-        db.add(ProjectAssignment(project_id=project.id, user_id=user.id))
+        raise HTTPException(
+            status_code=403,
+            detail="You are not assigned to this project. Request access from an admin to be added.",
+        )
 
     user.current_project_id = project.id
     await db.commit()
