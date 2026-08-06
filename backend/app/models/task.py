@@ -18,6 +18,8 @@ class Task(Base):
     status = Column(SAEnum("NOT_STARTED", "IN_PROGRESS", "BLOCKED", "COMPLETED", name="task_status_enum", create_type=False), default="NOT_STARTED")
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     due_date = Column(Date, nullable=True)
+    attachment_url = Column(String(500), nullable=True)
+    attachment_name = Column(String(250), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

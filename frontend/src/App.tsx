@@ -37,10 +37,37 @@ const AppContent: React.FC = () => {
   );
 };
 
+const VALID_TABS = ['dashboard', 'projects', 'tasks', 'calendar', 'leave', 'reports', 'audit', 'users'];
+
+const getInitialTab = () => {
+  const hash = window.location.hash.replace('#', '');
+  if (hash && VALID_TABS.includes(hash)) return hash;
+  const saved = localStorage.getItem('activeTab');
+  if (saved && VALID_TABS.includes(saved)) return saved;
+  return 'dashboard';
+};
+
 const AppShell: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTabState] = useState<string>(getInitialTab);
   const [isMorningOpen, setIsMorningOpen] = useState(false);
   const [isEveningOpen, setIsEveningOpen] = useState(false);
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    window.location.hash = tab;
+    localStorage.setItem('activeTab', tab);
+  };
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && VALID_TABS.includes(hash)) {
+        setActiveTabState(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100 antialiased selection:bg-blue-500 selection:text-white">

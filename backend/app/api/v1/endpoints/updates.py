@@ -60,6 +60,8 @@ async def list_updates(
             evening_challenges=u.evening_challenges,
             evening_next_day_plan=u.evening_next_day_plan,
             evening_submitted_at=u.evening_submitted_at,
+            attachment_url=u.attachment_url,
+            attachment_name=u.attachment_name,
             is_locked=u.is_locked,
         )
         for u in updates
@@ -94,6 +96,10 @@ async def submit_morning_update(
         update.morning_planned_work = body.planned_work
         update.morning_est_hours = body.est_hours
         update.morning_blockers = body.blockers
+        if body.attachment_url:
+            update.attachment_url = body.attachment_url
+        if body.attachment_name:
+            update.attachment_name = body.attachment_name
         update.morning_submitted_at = datetime.now(timezone.utc)
     else:
         update = TaskUpdate(
@@ -105,6 +111,8 @@ async def submit_morning_update(
             morning_planned_work=body.planned_work,
             morning_est_hours=body.est_hours,
             morning_blockers=body.blockers,
+            attachment_url=body.attachment_url,
+            attachment_name=body.attachment_name,
             morning_submitted_at=datetime.now(timezone.utc),
         )
         db.add(update)
@@ -150,6 +158,8 @@ async def submit_morning_update(
         evening_challenges=u.evening_challenges,
         evening_next_day_plan=u.evening_next_day_plan,
         evening_submitted_at=u.evening_submitted_at,
+        attachment_url=u.attachment_url,
+        attachment_name=u.attachment_name,
         is_locked=u.is_locked,
     )
 
@@ -193,6 +203,10 @@ async def submit_evening_update(
     update.evening_hours_spent = body.hours_spent
     update.evening_challenges = body.challenges
     update.evening_next_day_plan = body.next_day_plan
+    if body.attachment_url:
+        update.attachment_url = body.attachment_url
+    if body.attachment_name:
+        update.attachment_name = body.attachment_name
     update.evening_submitted_at = datetime.now(timezone.utc)
 
     admins = await get_admin_users(db)
@@ -236,6 +250,8 @@ async def submit_evening_update(
         evening_challenges=u.evening_challenges,
         evening_next_day_plan=u.evening_next_day_plan,
         evening_submitted_at=u.evening_submitted_at,
+        attachment_url=u.attachment_url,
+        attachment_name=u.attachment_name,
         is_locked=u.is_locked,
     )
 

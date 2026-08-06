@@ -35,7 +35,7 @@ interface AppContextType {
   submitEveningUpdate: (data: { completedWork: string; remainingWork: string; hoursSpent: number; challenges?: string; nextDayPlan: string }) => Promise<void>;
   createProject: (project: any) => Promise<void>;
   createTask: (task: any) => Promise<void>;
-  updateTaskStatus: (taskId: string, status: Task['status']) => Promise<void>;
+  updateTaskStatus: (taskId: string, status: Task['status'], attachmentUrl?: string, attachmentName?: string) => Promise<void>;
   updateTask: (taskId: string, data: any) => Promise<void>;
   applyLeave: (data: { requestType?: string; startDate: string; endDate: string; reason: string }) => Promise<void>;
   reviewLeaveRequest: (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => Promise<void>;
@@ -104,6 +104,8 @@ function mapTask(t: any): Task {
     assignedTo: t.assigned_to || t.assignedTo || '',
     assignedToName: t.assigned_to_name || t.assignedToName || '',
     dueDate: t.due_date || t.dueDate || '',
+    attachmentUrl: t.attachment_url || t.attachmentUrl,
+    attachmentName: t.attachment_name || t.attachmentName,
     createdAt: t.created_at || t.createdAt || '',
   };
 }
@@ -130,6 +132,8 @@ function mapUpdate(u: any): DailyTaskUpdate {
     eveningChallenges: u.evening_challenges || u.eveningChallenges,
     eveningNextDayPlan: u.evening_next_day_plan || u.eveningNextDayPlan,
     eveningSubmittedAt: u.evening_submitted_at || u.eveningSubmittedAt,
+    attachmentUrl: u.attachment_url || u.attachmentUrl,
+    attachmentName: u.attachment_name || u.attachmentName,
     isLocked: u.is_locked ?? u.isLocked ?? false,
   };
 }
@@ -466,9 +470,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await refreshData();
   }, [token, refreshData]);
 
-  const updateTaskStatus = useCallback(async (taskId: string, status: Task['status']) => {
+  const updateTaskStatus = useCallback(async (taskId: string, status: Task['status'], attachmentUrl?: string, attachmentName?: string) => {
     if (!token) return;
-    const result = await api.updateTaskStatus(token, taskId, status);
+    const result = await api.updateTaskStatus(token, taskId, status, attachmentUrl, attachmentName);
     const mapped = mapTask(result);
     setTasks(prev => prev.map(t => t.id === mapped.id ? mapped : t));
   }, [token]);

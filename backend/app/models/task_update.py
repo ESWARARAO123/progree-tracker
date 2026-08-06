@@ -30,6 +30,9 @@ class TaskUpdate(Base):
     evening_next_day_plan = Column(Text, nullable=True)
     evening_submitted_at = Column(DateTime(timezone=True), nullable=True)
 
+    attachment_url = Column(String(500), nullable=True)
+    attachment_name = Column(String(250), nullable=True)
+
     is_locked = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

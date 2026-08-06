@@ -1,14 +1,43 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { BarChart3, FileSpreadsheet, Filter, ArrowUpDown, User as UserIcon, Briefcase } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import * as api from '../api';
+import { BarChart3, FileSpreadsheet, Filter, ArrowUpDown, User as UserIcon, Briefcase, Presentation, Download } from 'lucide-react';
 import type { DailyTaskUpdate } from '../types';
 
 export const ReportsPage: React.FC = () => {
   const { updates, tasks, users, projects, currentUser, loading } = useApp();
-  const [granularity, setGranularity] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly'>('Monthly');
+  const { token } = useAuth();
+  const [granularity, setGranularity] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly'>('Weekly');
   const [selectedUser, setSelectedUser] = useState<string>('ALL');
   const [selectedProject, setSelectedProject] = useState<string>('ALL');
-  const [sortBy, setSortBy] = useState<'FCFS' | 'USER_ASC' | 'PROJECT_ASC' | 'DATE_DESC' | 'DATE_ASC' | 'HOURS_DESC'>('FCFS');
+  const [sortBy, setSortBy] = useState<'FCFS' | 'USER_ASC' | 'PROJECT_ASC' | 'DATE_DESC' | 'DATE_ASC' | 'HOURS_DESC'>('DATE_DESC');
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingPPT, setExportingPPT] = useState(false);
+
+  const handleExportExcel = async () => {
+    if (!token) return;
+    try {
+      setExportingExcel(true);
+      await api.exportUpdatesExcel(token, 7, selectedUser !== 'ALL' ? selectedUser : undefined);
+    } catch (err: any) {
+      alert(err.message || 'Failed to export Excel report');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const handleExportPPT = async () => {
+    if (!token) return;
+    try {
+      setExportingPPT(true);
+      await api.exportUpdatesPPT(token, 7, selectedUser !== 'ALL' ? selectedUser : undefined);
+    } catch (err: any) {
+      alert(err.message || 'Failed to export PowerPoint presentation');
+    } finally {
+      setExportingPPT(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -107,7 +136,7 @@ export const ReportsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Top Right Sort Dropdown */}
           <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/80 px-3 py-2 rounded-xl text-xs shadow-sm">
             <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" />
@@ -117,21 +146,42 @@ export const ReportsPage: React.FC = () => {
               onChange={e => setSortBy(e.target.value as any)}
               className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-xs"
             >
+              <option value="DATE_DESC" className="bg-slate-900 text-white">Date (Newest First)</option>
+              <option value="DATE_ASC" className="bg-slate-900 text-white">Date (Oldest First)</option>
               <option value="FCFS" className="bg-slate-900 text-white">First Come First Serve (FCFS)</option>
               <option value="USER_ASC" className="bg-slate-900 text-white">Employee Name (A-Z)</option>
               <option value="PROJECT_ASC" className="bg-slate-900 text-white">Project Name (A-Z)</option>
-              <option value="DATE_DESC" className="bg-slate-900 text-white">Date (Newest First)</option>
-              <option value="DATE_ASC" className="bg-slate-900 text-white">Date (Oldest First)</option>
               <option value="HOURS_DESC" className="bg-slate-900 text-white">Hours Spent (High to Low)</option>
             </select>
           </div>
 
           <button
-            onClick={handleExportCSV}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-2 shadow-lg shadow-emerald-600/30 transition"
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
+            title="Export last 1 week updates as formatted Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Export to CSV / Excel</span>
+            <span>{exportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}</span>
+          </button>
+
+          <button
+            onClick={handleExportPPT}
+            disabled={exportingPPT}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-orange-600/30 transition disabled:opacity-50"
+            title="Export last 1 week updates as PowerPoint Presentation (.pptx)"
+          >
+            <Presentation className="w-4 h-4" />
+            <span>{exportingPPT ? 'Exporting...' : 'Export PPT (.pptx)'}</span>
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition"
+            title="Export filtered updates as CSV"
+          >
+            <Download className="w-4 h-4 text-slate-400" />
+            <span>Export CSV</span>
           </button>
         </div>
       </div>

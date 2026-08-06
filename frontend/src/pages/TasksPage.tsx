@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, CheckSquare, User, Calendar, Sun, ArrowUpDown, Edit3 } from 'lucide-react';
+import { Plus, CheckSquare, User, Calendar, Sun, ArrowUpDown, Edit3, Paperclip, FileText, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { NewTaskModal } from '../components/NewTaskModal';
 import { EditTaskModal } from '../components/EditTaskModal';
+import { UpdateTaskStatusModal } from '../components/UpdateTaskStatusModal';
 import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
 import type { TaskStatus, Task } from '../types';
 
@@ -40,11 +41,18 @@ export const TasksPage: React.FC = () => {
   const { tasks, updates, projects, users, updateTaskStatus, currentUser, loading } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [statusProofTask, setStatusProofTask] = useState<Task | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('ALL');
   const [selectedUserId, setSelectedUserId] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'PRIORITY' | 'DUE_DATE' | 'PROJECT' | 'STATUS'>('PRIORITY');
 
   const today = todayStr();
+
+  const isImageFile = (fileName?: string) => {
+    if (!fileName) return false;
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext || '');
+  };
 
   if (loading) {
     return (
@@ -158,7 +166,7 @@ export const TasksPage: React.FC = () => {
                   <th className="text-left px-4 py-3 font-semibold text-slate-400">Project</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-400">Assignee</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-400">Priority</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-400">Status</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-400">Status & Proof</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-400">Due Date</th>
                   <th className="text-right px-4 py-3 font-semibold text-slate-400">Actions</th>
                 </tr>
@@ -192,16 +200,36 @@ export const TasksPage: React.FC = () => {
                           {t.priority}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <select
-                          value={t.status}
-                          onChange={e => updateTaskStatus(t.id, e.target.value as TaskStatus)}
-                          className={`text-[10px] font-semibold px-2 py-1 rounded border ${statusColor[t.status]} bg-slate-800 focus:outline-none cursor-pointer`}
-                        >
-                          {allStatuses.map(s => (
-                            <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                          ))}
-                        </select>
+                      <td className="px-4 py-3 space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <select
+                            value={t.status}
+                            onChange={e => updateTaskStatus(t.id, e.target.value as TaskStatus)}
+                            className={`text-[10px] font-semibold px-2 py-1 rounded border ${statusColor[t.status]} bg-slate-800 focus:outline-none cursor-pointer`}
+                          >
+                            {allStatuses.map(s => (
+                              <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => setStatusProofTask(t)}
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-blue-400 transition"
+                            title="Upload Screenshot / Document Proof"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {t.attachmentUrl && (
+                          <a
+                            href={t.attachmentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-blue-400 underline hover:text-blue-300 flex items-center space-x-1"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span className="truncate max-w-[120px]">{t.attachmentName || 'Proof'}</span>
+                          </a>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {t.dueDate ? (
@@ -247,6 +275,11 @@ export const TasksPage: React.FC = () => {
         {editingTask && (
           <EditTaskModal isOpen={!!editingTask} onClose={() => setEditingTask(null)} task={editingTask} />
         )}
+        <UpdateTaskStatusModal
+          isOpen={!!statusProofTask}
+          onClose={() => setStatusProofTask(null)}
+          task={statusProofTask}
+        />
       </div>
     );
   }
@@ -267,14 +300,31 @@ export const TasksPage: React.FC = () => {
             <CheckSquare className="w-5 h-5 text-blue-400" />
             <span>My Tasks</span>
           </h2>
-          <p className="text-xs text-slate-400">Track your assigned tasks, update status, and monitor progress.</p>
+          <p className="text-xs text-slate-400">Track your assigned tasks, update status, and attach proof/documents.</p>
         </div>
+
+        {/* Feature 3: All users can add their own task */}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-blue-600/30 transition"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Custom Task</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {orderedTasks.length === 0 ? (
           <div className="col-span-full">
-            <p className="text-xs text-slate-500 py-12 text-center border border-dashed border-slate-800 rounded-2xl">No tasks assigned to you yet.</p>
+            <div className="p-12 text-center border border-dashed border-slate-800 rounded-2xl space-y-3">
+              <p className="text-xs text-slate-500">No tasks assigned to you yet.</p>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-semibold transition"
+              >
+                + Create Your First Task
+              </button>
+            </div>
           </div>
         ) : (
           orderedTasks.map(t => {
@@ -316,6 +366,29 @@ export const TasksPage: React.FC = () => {
                   <p className="text-xs text-slate-400">{t.description}</p>
                 )}
 
+                {/* Feature 4: Display Attached Screenshot / Doc Proof */}
+                {t.attachmentUrl && (
+                  <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2 truncate">
+                      {isImageFile(t.attachmentName) ? (
+                        <ImageIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                      )}
+                      <span className="truncate text-slate-200 font-medium">{t.attachmentName || 'Attached Proof'}</span>
+                    </div>
+                    <a
+                      href={t.attachmentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg text-[10px] font-semibold border border-blue-500/30 flex items-center space-x-1 shrink-0"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>View</span>
+                    </a>
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <div className="flex justify-between text-[11px] text-slate-400">
                     <span>Progress</span>
@@ -348,8 +421,18 @@ export const TasksPage: React.FC = () => {
                   })()}
                 </div>
 
-                <div className="pt-2 border-t border-slate-800">
-                  <label className="block text-[10px] font-semibold text-slate-400 mb-1.5">Update Status</label>
+                {/* Feature 4: Status Update with Upload Proof Option */}
+                <div className="pt-2 border-t border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold text-slate-400">Update Status</label>
+                    <button
+                      onClick={() => setStatusProofTask(t)}
+                      className="text-[10px] text-blue-400 hover:underline flex items-center space-x-1"
+                    >
+                      <Paperclip className="w-3 h-3" />
+                      <span>Upload Proof / Docs</span>
+                    </button>
+                  </div>
                   <div className="grid grid-cols-4 gap-1">
                     {allStatuses.map(s => (
                       <button
@@ -371,6 +454,13 @@ export const TasksPage: React.FC = () => {
           })
         )}
       </div>
+
+      <NewTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <UpdateTaskStatusModal
+        isOpen={!!statusProofTask}
+        onClose={() => setStatusProofTask(null)}
+        task={statusProofTask}
+      />
     </div>
   );
 };

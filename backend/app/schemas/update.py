@@ -9,6 +9,8 @@ class MorningUpdateRequest(BaseModel):
     planned_work: str
     est_hours: float
     blockers: str | None = None
+    attachment_url: str | None = None
+    attachment_name: str | None = None
 
 
 class EveningUpdateRequest(BaseModel):
@@ -17,6 +19,8 @@ class EveningUpdateRequest(BaseModel):
     hours_spent: float
     challenges: str | None = None
     next_day_plan: str
+    attachment_url: str | None = None
+    attachment_name: str | None = None
 
 
 class TaskUpdateResponse(BaseModel):
@@ -38,7 +42,10 @@ class TaskUpdateResponse(BaseModel):
     evening_challenges: str | None
     evening_next_day_plan: str | None
     evening_submitted_at: datetime | None
+    attachment_url: str | None = None
+    attachment_name: str | None = None
     is_locked: bool
 
     class Config:
         from_attributes = True
+

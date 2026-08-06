@@ -171,9 +171,11 @@ export async function createTask(token: string, data: any) {
   return handleResponse(res);
 }
 
-export async function updateTaskStatus(token: string, taskId: string, status: string) {
+export async function updateTaskStatus(token: string, taskId: string, status: string, attachmentUrl?: string, attachmentName?: string) {
   const res = await fetch(`${API_BASE}/tasks/${taskId}/status`, {
-    method: 'PATCH', headers: authHeaders(token), body: JSON.stringify({ status }),
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify({ status, attachment_url: attachmentUrl, attachment_name: attachmentName }),
   });
   return handleResponse(res);
 }
@@ -183,6 +185,79 @@ export async function updateTask(token: string, taskId: string, data: any) {
     method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
   });
   return handleResponse(res);
+}
+
+// Project Chat
+export async function getProjectChat(token: string, projectId: string) {
+  const res = await fetch(`${API_BASE}/projects/chat/${projectId}`, { headers: authHeaders(token) });
+  return handleResponse(res);
+}
+
+export async function sendProjectChatMessage(token: string, projectId: string, data: { message: string; file_url?: string; file_name?: string }) {
+  const res = await fetch(`${API_BASE}/projects/chat/${projectId}`, {
+    method: 'POST', headers: authHeaders(token), body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
+export async function uploadChatFile(token: string, projectId: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/projects/chat/${projectId}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return handleResponse(res);
+}
+
+// Uploads
+export async function uploadFile(token: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/uploads/`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return handleResponse(res);
+}
+
+// Exports
+export async function exportUpdatesExcel(token: string, days: number = 7, userId?: string) {
+  const params = new URLSearchParams({ days: days.toString() });
+  if (userId) params.append('user_id', userId);
+  const res = await fetch(`${API_BASE}/export/excel?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to export Excel report');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Work_Updates_Report_${days}Days.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function exportUpdatesPPT(token: string, days: number = 7, userId?: string) {
+  const params = new URLSearchParams({ days: days.toString() });
+  if (userId) params.append('user_id', userId);
+  const res = await fetch(`${API_BASE}/export/ppt?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to export PowerPoint report');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Work_Updates_Presentation_${days}Days.pptx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 // Updates

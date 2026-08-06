@@ -4,13 +4,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
+import os
+from fastapi.staticfiles import StaticFiles
+
 from app.core.config import settings
 from app.db.base import engine, Base, async_session
 from app.models.role import Role
 from app.models.user import User
 from app.models.project_request import ProjectRequest
 from app.core.security import get_password_hash
-from app.api.v1.endpoints import auth, users, projects, tasks, updates, leave, notifications, audit, dashboard, project_requests, meetings, company_holidays
+from app.api.v1.endpoints import (
+    auth, users, projects, tasks, updates, leave, notifications,
+    audit, dashboard, project_requests, meetings, company_holidays,
+    project_chat, uploads, export
+)
 from sqlalchemy import text as sa_text
 
 
@@ -32,6 +39,18 @@ async def lifespan(app: FastAPI):
         ))
         await conn.execute(sa_text(
             "ALTER TABLE task_updates ADD COLUMN IF NOT EXISTS morning_status task_status_enum"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE task_updates ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(500)"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE task_updates ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(250)"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(500)"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(250)"
         ))
         await conn.execute(sa_text(
             "ALTER TABLE meetings ADD COLUMN IF NOT EXISTS end_time VARCHAR(5)"
@@ -72,12 +91,16 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+os.makedirs("uploads", exist_ok=True)
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     description="REST API for Daily Work Tracker Enterprise System",
     lifespan=lifespan,
 )
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 origins = [
     "http://localhost",
@@ -98,6 +121,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["projects"])
+app.include_router(project_chat.router, prefix=f"{settings.API_V1_STR}/projects/chat", tags=["project-chat"])
 app.include_router(tasks.router, prefix=f"{settings.API_V1_STR}/tasks", tags=["tasks"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(leave.router, prefix=f"{settings.API_V1_STR}/leave", tags=["leave"])
@@ -107,6 +131,9 @@ app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", 
 app.include_router(project_requests.router, prefix=f"{settings.API_V1_STR}/project-requests", tags=["project-requests"])
 app.include_router(meetings.router, prefix=f"{settings.API_V1_STR}/meetings", tags=["meetings"])
 app.include_router(company_holidays.router, prefix=f"{settings.API_V1_STR}/company-holidays", tags=["company-holidays"])
+app.include_router(uploads.router, prefix=f"{settings.API_V1_STR}/uploads", tags=["uploads"])
+app.include_router(export.router, prefix=f"{settings.API_V1_STR}/export", tags=["export"])
+
 
 
 @app.get("/")

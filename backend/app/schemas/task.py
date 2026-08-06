@@ -10,6 +10,8 @@ class CreateTaskRequest(BaseModel):
     assigned_to: str | None = None
     assigned_to_ids: list[str] = []
     due_date: date | None = None
+    attachment_url: str | None = None
+    attachment_name: str | None = None
 
 
 class TaskResponse(BaseModel):
@@ -23,6 +25,8 @@ class TaskResponse(BaseModel):
     assigned_to: str | None
     assigned_to_name: str | None = None
     due_date: date | None
+    attachment_url: str | None = None
+    attachment_name: str | None = None
     created_at: datetime | None = None
 
     class Config:
@@ -31,6 +35,8 @@ class TaskResponse(BaseModel):
 
 class UpdateTaskStatusRequest(BaseModel):
     status: str
+    attachment_url: str | None = None
+    attachment_name: str | None = None
 
 
 class UpdateTaskRequest(BaseModel):
@@ -40,3 +46,6 @@ class UpdateTaskRequest(BaseModel):
     status: str | None = None
     assigned_to: str | None = None
     due_date: date | None = None
+    attachment_url: str | None = None
+    attachment_name: str | None = None
+

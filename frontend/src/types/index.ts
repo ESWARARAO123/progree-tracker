@@ -80,6 +80,19 @@ export interface ProjectRequest {
   createdAt: string;
 }
 
+export interface ProjectChatMessage {
+  id: string;
+  projectId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userDesignation?: string;
+  message: string;
+  fileUrl?: string;
+  fileName?: string;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -91,6 +104,8 @@ export interface Task {
   assignedTo: string;
   assignedToName: string;
   dueDate: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   createdAt?: string;
 }
 
@@ -119,6 +134,10 @@ export interface DailyTaskUpdate {
   eveningChallenges?: string;
   eveningNextDayPlan?: string;
   eveningSubmittedAt?: string;
+
+  // Attachments
+  attachmentUrl?: string;
+  attachmentName?: string;
   
   isLocked: boolean;
 }

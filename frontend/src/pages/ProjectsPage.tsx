@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Check, X, Clock } from 'lucide-react';
+import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Check, X, Clock, MessageSquare } from 'lucide-react';
 import { NewProjectModal } from '../components/NewProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { DeleteProjectModal } from '../components/DeleteProjectModal';
+import { ProjectChatModal } from '../components/ProjectChatModal';
 import type { Project } from '../types';
 
 export const ProjectsPage: React.FC = () => {
@@ -11,6 +12,7 @@ export const ProjectsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [chatProject, setChatProject] = useState<Project | null>(null);
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
 
@@ -148,37 +150,47 @@ export const ProjectsPage: React.FC = () => {
             )}
           </div>
 
-          {!isAdmin && (
-            <div className="flex items-center gap-2">
-              {isSelected ? (
-                <span className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Active Project</span>
-                </span>
-              ) : isMine || isOwner ? (
-                <button
-                  onClick={() => selectProject(p.id)}
-                  className="flex-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Select Project</span>
-                </button>
-              ) : requested ? (
-                <span className="flex-1 text-center px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                  Request Pending...
-                </span>
-              ) : (
-                <button
-                  onClick={() => handleRequest(p.id)}
-                  disabled={requestingId === p.id}
-                  className="flex-1 px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition disabled:opacity-50"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{requestingId === p.id ? 'Requesting...' : 'Request Access'}</span>
-                </button>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setChatProject(p)}
+              className="flex-1 px-3 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 text-blue-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
+            >
+              <MessageSquare className="w-4 h-4 text-blue-400" />
+              <span>Project Chat</span>
+            </button>
+
+            {!isAdmin && (
+              <>
+                {isSelected ? (
+                  <span className="px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center justify-center space-x-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Active</span>
+                  </span>
+                ) : isMine || isOwner ? (
+                  <button
+                    onClick={() => selectProject(p.id)}
+                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center space-x-1 transition"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Select</span>
+                  </button>
+                ) : requested ? (
+                  <span className="px-3 py-2 rounded-xl text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                    Pending
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleRequest(p.id)}
+                    disabled={requestingId === p.id}
+                    className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex items-center justify-center space-x-1 transition disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Join</span>
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -213,24 +225,30 @@ export const ProjectsPage: React.FC = () => {
           <span>{p.startDate} - {p.endDate}</span>
         </div>
 
-        <div className="pt-2 border-t border-slate-800">
+        <div className="pt-2 border-t border-slate-800 flex items-center gap-2">
+          <button
+            onClick={() => setChatProject(p)}
+            className="flex-1 px-2 py-1.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-300 text-[11px] font-semibold flex items-center justify-center space-x-1 hover:bg-blue-600/30 transition"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Chat</span>
+          </button>
+
           {isSelected ? (
-            <span className="flex items-center justify-center space-x-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Active Project</span>
+            <span className="px-2 py-1.5 rounded-xl text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+              Active
             </span>
           ) : requested ? (
-            <span className="block text-center px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-              Request Pending...
+            <span className="px-2 py-1.5 rounded-xl text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+              Pending
             </span>
           ) : (
             <button
               onClick={() => handleRequest(p.id)}
               disabled={requestingId === p.id}
-              className="w-full px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-semibold flex items-center justify-center space-x-1.5 transition disabled:opacity-50"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-semibold transition disabled:opacity-50"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{requestingId === p.id ? 'Requesting...' : 'Request Access'}</span>
+              Request
             </button>
           )}
         </div>
@@ -376,6 +394,11 @@ export const ProjectsPage: React.FC = () => {
           project={deletingProject}
         />
       )}
+      <ProjectChatModal
+        isOpen={!!chatProject}
+        onClose={() => setChatProject(null)}
+        project={chatProject}
+      />
     </div>
   );
 };

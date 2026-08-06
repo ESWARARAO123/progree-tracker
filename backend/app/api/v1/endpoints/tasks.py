@@ -45,6 +45,8 @@ async def list_tasks(
             assigned_to=str(t.assigned_to) if t.assigned_to else None,
             assigned_to_name=t.assignee.full_name if t.assignee else None,
             due_date=t.due_date,
+            attachment_url=t.attachment_url,
+            attachment_name=t.attachment_name,
             created_at=t.created_at,
         )
         for t in tasks
@@ -70,6 +72,8 @@ async def create_task(
             priority=body.priority,
             assigned_to=UUID(uid),
             due_date=body.due_date,
+            attachment_url=body.attachment_url,
+            attachment_name=body.attachment_name,
         )
         db.add(task)
         created_tasks.append(task)
@@ -95,6 +99,8 @@ async def create_task(
         assigned_to=str(task.assigned_to) if task.assigned_to else None,
         assigned_to_name=task.assignee.full_name if task.assignee else None,
         due_date=task.due_date,
+        attachment_url=task.attachment_url,
+        attachment_name=task.attachment_name,
         created_at=task.created_at,
     )
 
@@ -119,6 +125,11 @@ async def update_task_status(
         raise HTTPException(status_code=403, detail="Access denied")
 
     task.status = body.status
+    if body.attachment_url is not None:
+        task.attachment_url = body.attachment_url
+    if body.attachment_name is not None:
+        task.attachment_name = body.attachment_name
+
     await db.commit()
     await db.refresh(task)
 
@@ -133,6 +144,8 @@ async def update_task_status(
         assigned_to=str(task.assigned_to) if task.assigned_to else None,
         assigned_to_name=task.assignee.full_name if task.assignee else None,
         due_date=task.due_date,
+        attachment_url=task.attachment_url,
+        attachment_name=task.attachment_name,
         created_at=task.created_at,
     )
 
@@ -168,6 +181,10 @@ async def update_task(
         task.due_date = body.due_date
     if body.assigned_to is not None:
         task.assigned_to = UUID(body.assigned_to) if body.assigned_to else None
+    if body.attachment_url is not None:
+        task.attachment_url = body.attachment_url
+    if body.attachment_name is not None:
+        task.attachment_name = body.attachment_name
 
     await db.commit()
     await db.refresh(task)
@@ -190,5 +207,8 @@ async def update_task(
         assigned_to=str(task.assigned_to) if task.assigned_to else None,
         assigned_to_name=task.assignee.full_name if task.assignee else None,
         due_date=task.due_date,
+        attachment_url=task.attachment_url,
+        attachment_name=task.attachment_name,
         created_at=task.created_at,
     )
+
