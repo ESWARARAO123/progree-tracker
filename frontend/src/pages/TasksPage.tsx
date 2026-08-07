@@ -181,6 +181,10 @@ export const TasksPage: React.FC = () => {
                     <tr key={t.id} className="border-b border-slate-800 hover:bg-slate-800/40 transition">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-white">{t.title}</div>
+                        <div className="flex items-center space-x-1 text-[10px] text-slate-500 mt-0.5">
+                          <User className="w-3 h-3" />
+                          <span>Created by <span className="text-slate-400 font-medium">{t.createdByName || '—'}</span></span>
+                        </div>
                         {t.description && <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[200px]">{t.description}</div>}
                       </td>
                       <td className="px-4 py-3 text-slate-300">{t.projectName}</td>
@@ -338,6 +342,10 @@ export const TasksPage: React.FC = () => {
                   <div className="flex-1">
                     <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{t.projectName}</div>
                     <h3 className="font-bold text-sm text-white mt-1">{t.title}</h3>
+                    <div className="flex items-center space-x-1 text-[10px] text-slate-500 mt-1">
+                      <User className="w-3 h-3" />
+                      <span>Created by <span className="text-slate-400 font-medium">{t.createdByName || '—'}</span></span>
+                    </div>
                   </div>
                   <div className="flex items-center space-x-1.5">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${

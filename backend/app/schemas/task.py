@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class CreateTaskRequest(BaseModel):
-    project_id: str
+    project_id: str | None = None
     title: str
     description: str | None = None
     priority: str = "MEDIUM"
@@ -16,7 +16,7 @@ class CreateTaskRequest(BaseModel):
 
 class TaskResponse(BaseModel):
     id: str
-    project_id: str
+    project_id: str | None = None
     project_name: str | None = None
     title: str
     description: str | None
@@ -24,6 +24,8 @@ class TaskResponse(BaseModel):
     status: str
     assigned_to: str | None
     assigned_to_name: str | None = None
+    created_by: str | None = None
+    created_by_name: str | None = None
     due_date: date | None
     attachment_url: str | None = None
     attachment_name: str | None = None

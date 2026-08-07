@@ -10,6 +10,7 @@ from app.models.audit_log import AuditLog
 from app.models.meeting import Meeting, MeetingAssignee
 from app.models.company_holiday import CompanyHoliday
 from app.models.project_chat import ProjectChat
+from app.models.project_request import ProjectRequest
 
 __all__ = [
     "Role",
@@ -25,5 +26,6 @@ __all__ = [
     "MeetingAssignee",
     "CompanyHoliday",
     "ProjectChat",
+    "ProjectRequest",
 ]
 

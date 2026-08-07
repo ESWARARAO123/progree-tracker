@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
-import { BarChart3, FileSpreadsheet, Filter, ArrowUpDown, User as UserIcon, Briefcase, Presentation, Download } from 'lucide-react';
+import { BarChart3, FileSpreadsheet, Filter, ArrowUpDown, User as UserIcon, Briefcase, Presentation, Download, ChevronDown } from 'lucide-react';
 import type { DailyTaskUpdate } from '../types';
 
 export const ReportsPage: React.FC = () => {
@@ -12,30 +12,34 @@ export const ReportsPage: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<string>('ALL');
   const [selectedProject, setSelectedProject] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'FCFS' | 'USER_ASC' | 'PROJECT_ASC' | 'DATE_DESC' | 'DATE_ASC' | 'HOURS_DESC'>('DATE_DESC');
-  const [exportingExcel, setExportingExcel] = useState(false);
-  const [exportingPPT, setExportingPPT] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  const handleExportExcel = async () => {
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const runExport = async (kind: 'excel' | 'ppt') => {
     if (!token) return;
     try {
-      setExportingExcel(true);
-      await api.exportUpdatesExcel(token, 7, selectedUser !== 'ALL' ? selectedUser : undefined);
+      setExporting(true);
+      if (kind === 'excel') {
+        await api.exportUpdatesExcel(token, 7, selectedUser !== 'ALL' ? selectedUser : undefined);
+      } else {
+        await api.exportUpdatesPPT(token, 7, selectedUser !== 'ALL' ? selectedUser : undefined);
+      }
     } catch (err: any) {
-      alert(err.message || 'Failed to export Excel report');
+      alert(err.message || 'Failed to export report');
     } finally {
-      setExportingExcel(false);
-    }
-  };
-
-  const handleExportPPT = async () => {
-    if (!token) return;
-    try {
-      setExportingPPT(true);
-      await api.exportUpdatesPPT(token, 7, selectedUser !== 'ALL' ? selectedUser : undefined);
-    } catch (err: any) {
-      alert(err.message || 'Failed to export PowerPoint presentation');
-    } finally {
-      setExportingPPT(false);
+      setExporting(false);
+      setExportOpen(false);
     }
   };
 
@@ -97,30 +101,6 @@ export const ReportsPage: React.FC = () => {
   const totalTasks = userTasks.length;
   const taskCompletionRate = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(0) : '0';
 
-  const handleExportCSV = () => {
-    const headers = ['User Name', 'Email', 'Project', 'Report Date', 'Morning Planned Work', 'Morning Est Hours', 'Evening Completed Work', 'Evening Hours Spent', 'Locked'];
-    const rows = filteredUpdates.map(u => [
-      `"${u.userName}"`,
-      `"${u.userEmail}"`,
-      `"${getUpdateProjectName(u)}"`,
-      `"${u.reportDate}"`,
-      `"${u.morningPlannedWork || ''}"`,
-      u.morningEstHours || 0,
-      `"${u.eveningCompletedWork || ''}"`,
-      u.eveningHoursSpent || 0,
-      u.isLocked ? 'TRUE' : 'FALSE'
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Daily_Work_Tracker_Report_${granularity}_2026.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="space-y-6 pb-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -155,34 +135,41 @@ export const ReportsPage: React.FC = () => {
             </select>
           </div>
 
-          <button
-            onClick={handleExportExcel}
-            disabled={exportingExcel}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
-            title="Export last 1 week updates as formatted Excel (.xlsx)"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>{exportingExcel ? 'Exporting...' : 'Export Excel (.xlsx)'}</span>
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setExportOpen(prev => !prev)}
+              disabled={exporting}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
+              title="Export last 1 week updates"
+            >
+              <Download className="w-4 h-4" />
+              <span>{exporting ? 'Exporting...' : 'Export'}</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
 
-          <button
-            onClick={handleExportPPT}
-            disabled={exportingPPT}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-orange-600/30 transition disabled:opacity-50"
-            title="Export last 1 week updates as PowerPoint Presentation (.pptx)"
-          >
-            <Presentation className="w-4 h-4" />
-            <span>{exportingPPT ? 'Exporting...' : 'Export PPT (.pptx)'}</span>
-          </button>
-
-          <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition"
-            title="Export filtered updates as CSV"
-          >
-            <Download className="w-4 h-4 text-slate-400" />
-            <span>Export CSV</span>
-          </button>
+            {exportOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-20 text-xs">
+                <button
+                  onClick={() => runExport('excel')}
+                  disabled={exporting}
+                  className="w-full flex items-center space-x-2.5 px-4 py-3 text-left text-slate-200 hover:bg-slate-800 transition disabled:opacity-50"
+                  title="Export last 1 week updates as formatted Excel (.xlsx)"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                  <span className="font-semibold">Export to Excel (.xlsx)</span>
+                </button>
+                <button
+                  onClick={() => runExport('ppt')}
+                  disabled={exporting}
+                  className="w-full flex items-center space-x-2.5 px-4 py-3 text-left text-slate-200 hover:bg-slate-800 transition border-t border-slate-800 disabled:opacity-50"
+                  title="Export last 1 week updates as PowerPoint Presentation (.pptx)"
+                >
+                  <Presentation className="w-4 h-4 text-amber-400" />
+                  <span className="font-semibold">Export to PPT (.pptx)</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

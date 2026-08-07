@@ -103,6 +103,8 @@ export interface Task {
   status: TaskStatus;
   assignedTo: string;
   assignedToName: string;
+  createdBy?: string;
+  createdByName?: string;
   dueDate: string;
   attachmentUrl?: string;
   attachmentName?: string;

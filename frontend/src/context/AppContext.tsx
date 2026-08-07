@@ -31,7 +31,7 @@ interface AppContextType {
   deleteMeeting: (meetingId: string) => Promise<void>;
   createCompanyHoliday: (data: { name: string; description?: string; date: string }) => Promise<void>;
   deleteCompanyHoliday: (holidayId: string) => Promise<void>;
-  submitMorningUpdate: (data: { projectId: string; taskId?: string | null; taskTitle?: string; plannedWork: string; estHours: number; blockers?: string }) => Promise<void>;
+  submitMorningUpdate: (data: { projectId: string | null; taskId?: string | null; taskTitle?: string; plannedWork: string; estHours: number; blockers?: string }) => Promise<void>;
   submitEveningUpdate: (data: { completedWork: string; remainingWork: string; hoursSpent: number; challenges?: string; nextDayPlan: string }) => Promise<void>;
   createProject: (project: any) => Promise<void>;
   createTask: (task: any) => Promise<void>;
@@ -103,6 +103,8 @@ function mapTask(t: any): Task {
     status: t.status,
     assignedTo: t.assigned_to || t.assignedTo || '',
     assignedToName: t.assigned_to_name || t.assignedToName || '',
+    createdBy: t.created_by || t.createdBy || '',
+    createdByName: t.created_by_name || t.createdByName || '',
     dueDate: t.due_date || t.dueDate || '',
     attachmentUrl: t.attachment_url || t.attachmentUrl,
     attachmentName: t.attachment_name || t.attachmentName,
@@ -245,10 +247,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [authUser]);
 
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (silent = false) => {
     if (!token) return;
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const [uRes, pRes, tRes, upRes, lRes, nRes] = await Promise.all([
         api.getUsers(token).catch(() => []),
@@ -269,16 +273,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const bRes = await api.getLeaveSummary(token);
         setLeaveBalance(mapLeaveBalance(bRes));
       } catch { setLeaveBalance(null); }
-      // Audit logs only for admin
-      try {
-        const aRes = await api.getAuditLogs(token);
-        setAuditLogs((aRes || []).map(mapAuditLog));
-      } catch { setAuditLogs([]); }
-      // Project requests only for admin
-      try {
-        const prRes = await api.getProjectRequests(token);
-        setProjectRequests((prRes || []).map(mapProjectRequest));
-      } catch { setProjectRequests([]); }
+      // Audit logs & Project requests only for admin
+      if (authUser?.role === 'ADMIN') {
+        try {
+          const aRes = await api.getAuditLogs(token);
+          setAuditLogs((aRes || []).map(mapAuditLog));
+        } catch { setAuditLogs([]); }
+        try {
+          const prRes = await api.getProjectRequests(token);
+          setProjectRequests((prRes || []).map(mapProjectRequest));
+        } catch { setProjectRequests([]); }
+      } else {
+        setAuditLogs([]);
+        setProjectRequests([]);
+      }
       // Meetings (all users)
       try {
         const mRes = await api.getMeetings(token);
@@ -292,18 +300,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, [token]);
+  }, [token, authUser]);
 
   useEffect(() => {
     refreshData();
   }, [refreshData]);
 
-  const submitMorningUpdate = useCallback(async (data: { projectId: string; taskId?: string | null; taskTitle?: string; plannedWork: string; estHours: number; blockers?: string }) => {
+  useEffect(() => {
+    const id = setInterval(() => refreshData(true), 30000);
+    return () => clearInterval(id);
+  }, [refreshData]);
+
+  const submitMorningUpdate = useCallback(async (data: { projectId: string | null; taskId?: string | null; taskTitle?: string; plannedWork: string; estHours: number; blockers?: string }) => {
     if (!token) return;
     const result = await api.submitMorningUpdate(token, {
-      project_id: data.projectId,
+      project_id: data.projectId || null,
       task_id: data.taskId || null,
       morning_task_title: data.taskTitle || null,
       planned_work: data.plannedWork,

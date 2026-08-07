@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Check, X, Clock, MessageSquare } from 'lucide-react';
+import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Users, Check, X, Clock, MessageSquare } from 'lucide-react';
 import { NewProjectModal } from '../components/NewProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { DeleteProjectModal } from '../components/DeleteProjectModal';
 import { ProjectChatModal } from '../components/ProjectChatModal';
+import { NewTaskModal } from '../components/NewTaskModal';
 import type { Project } from '../types';
 
 export const ProjectsPage: React.FC = () => {
@@ -13,7 +14,9 @@ export const ProjectsPage: React.FC = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [chatProject, setChatProject] = useState<Project | null>(null);
+  const [taskProject, setTaskProject] = useState<Project | null>(null);
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
+  const [membersMenuProjectId, setMembersMenuProjectId] = useState<string | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
 
   const isAdmin = currentUser.role === 'ADMIN';
@@ -21,13 +24,17 @@ export const ProjectsPage: React.FC = () => {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuProjectId && !(e.target as HTMLElement).closest('[data-project-menu]')) {
+      const target = e.target as HTMLElement;
+      if (menuProjectId && !target.closest('[data-project-menu]')) {
         setMenuProjectId(null);
+      }
+      if (membersMenuProjectId && !target.closest('[data-members-menu]')) {
+        setMembersMenuProjectId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuProjectId]);
+  }, [menuProjectId, membersMenuProjectId]);
 
   if (loading) {
     return (
@@ -58,8 +65,8 @@ export const ProjectsPage: React.FC = () => {
     return (
       <div key={p.id} className={`glass-panel p-5 rounded-2xl border space-y-4 flex flex-col justify-between transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
         <div className="space-y-3">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center space-x-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                 p.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
                 p.priority === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
@@ -72,18 +79,85 @@ export const ProjectsPage: React.FC = () => {
                   OWNED
                 </span>
               )}
-            </div>
-
-            <div className="flex items-center space-x-2">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                 {p.status}
               </span>
+            </div>
 
+            {/* Top Right Action Toolbar (Team Members, Create Task, Project Chat, Admin Menu) */}
+            <div className="flex items-center space-x-1.5 shrink-0">
+              {/* 1. Team Members Button with Popover */}
+              <div className="relative" data-members-menu>
+                <button
+                  onClick={() => setMembersMenuProjectId(membersMenuProjectId === p.id ? null : p.id)}
+                  className={`px-2 py-1 rounded-lg border text-xs font-semibold flex items-center space-x-1 transition ${
+                    membersMenuProjectId === p.id
+                      ? 'bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-500/20'
+                      : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border-blue-500/30'
+                  }`}
+                  title="Team Members"
+                >
+                  <Users className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-[11px]">Team ({p.assignedUsers.length})</span>
+                </button>
+
+                {membersMenuProjectId === p.id && (
+                  <div className="absolute right-0 top-8 w-60 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-30 p-3 space-y-2">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-white flex items-center space-x-1.5">
+                        <Users className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Team Members ({p.assignedUsers.length})</span>
+                      </span>
+                    </div>
+                    {p.assignedUsers.length === 0 ? (
+                      <p className="text-[11px] text-slate-500 italic py-1">No team members assigned.</p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                        {p.assignedUsers.map(u => (
+                          <div key={u.id} className="flex items-center space-x-2 bg-slate-800/60 border border-slate-700/60 rounded-lg p-1.5 text-xs">
+                            <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-300 font-bold flex items-center justify-center text-[10px] shrink-0 border border-blue-500/30">
+                              {u.fullName.charAt(0).toUpperCase()}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-slate-200 font-semibold text-[11px] truncate">{u.fullName}</p>
+                              <p className="text-slate-400 text-[9px] truncate">{u.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Create Task for This Project Button */}
+              {(isOwner || isAdmin) && (
+                <button
+                  onClick={() => setTaskProject(p)}
+                  className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-xs font-semibold flex items-center space-x-1 transition"
+                  title="Create Task for This Project"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Task</span>
+                </button>
+              )}
+
+              {/* 3. Project Chat Button */}
+              <button
+                onClick={() => setChatProject(p)}
+                className="px-2 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center space-x-1 transition"
+                title="Project Chat"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-[11px]">Chat</span>
+              </button>
+
+              {/* Admin Context Menu */}
               {isAdmin && (
                 <div className="relative" data-project-menu>
                   <button
                     onClick={() => setMenuProjectId(menuProjectId === p.id ? null : p.id)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition"
+                    className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition"
                   >
                     <MoreVertical className="w-3.5 h-3.5" />
                   </button>
@@ -123,6 +197,29 @@ export const ProjectsPage: React.FC = () => {
             </div>
           )}
 
+          {/* Quick Team Member Avatar Preview */}
+          {p.assignedUsers.length > 0 && (
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Assigned Team</span>
+              <div className="flex items-center -space-x-1.5 overflow-hidden">
+                {p.assignedUsers.slice(0, 5).map(u => (
+                  <span
+                    key={u.id}
+                    className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-300 text-[9px] font-bold flex items-center justify-center border border-slate-800 shrink-0"
+                    title={u.fullName}
+                  >
+                    {u.fullName.charAt(0).toUpperCase()}
+                  </span>
+                ))}
+                {p.assignedUsers.length > 5 && (
+                  <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-[9px] font-bold flex items-center justify-center border border-slate-700 shrink-0">
+                    +{p.assignedUsers.length - 5}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Progress bar */}
           <div className="space-y-1 pt-1">
             <div className="flex justify-between text-xs text-slate-400">
@@ -135,54 +232,44 @@ export const ProjectsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-            <div className="flex items-center space-x-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>{p.startDate} - {p.endDate}</span>
-            </div>
+        <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center space-x-1.5">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>{p.startDate} - {p.endDate}</span>
+          </div>
 
+          <div className="flex items-center space-x-2">
             {p.overdueTasksCount > 0 && (
               <span className="flex items-center space-x-1 text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded text-[10px]">
                 <AlertCircle className="w-3 h-3" />
                 <span>{p.overdueTasksCount} Overdue</span>
               </span>
             )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setChatProject(p)}
-              className="flex-1 px-3 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 text-blue-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
-            >
-              <MessageSquare className="w-4 h-4 text-blue-400" />
-              <span>Project Chat</span>
-            </button>
 
             {!isAdmin && (
               <>
                 {isSelected ? (
-                  <span className="px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center justify-center space-x-1">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Active</span>
                   </span>
                 ) : isMine || isOwner ? (
                   <button
                     onClick={() => selectProject(p.id)}
-                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center space-x-1 transition"
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1 transition"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Select</span>
                   </button>
                 ) : requested ? (
-                  <span className="px-3 py-2 rounded-xl text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                    Pending
+                  <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                    Pending Access
                   </span>
                 ) : (
                   <button
                     onClick={() => handleRequest(p.id)}
                     disabled={requestingId === p.id}
-                    className="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex items-center justify-center space-x-1 transition disabled:opacity-50"
+                    className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex items-center space-x-1 transition disabled:opacity-50"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Join</span>
@@ -398,6 +485,11 @@ export const ProjectsPage: React.FC = () => {
         isOpen={!!chatProject}
         onClose={() => setChatProject(null)}
         project={chatProject}
+      />
+      <NewTaskModal
+        isOpen={!!taskProject}
+        onClose={() => setTaskProject(null)}
+        initialProjectId={taskProject?.id}
       />
     </div>
   );

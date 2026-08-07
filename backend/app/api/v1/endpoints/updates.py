@@ -76,6 +76,8 @@ async def submit_morning_update(
 ):
     today = date.today()
 
+    project_id = body.project_id if body.project_id and body.project_id.strip() else None
+
     existing = await db.execute(
         select(TaskUpdate).where(
             TaskUpdate.user_id == user.id,
@@ -90,7 +92,7 @@ async def submit_morning_update(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Updates for today are locked",
             )
-        update.project_id = body.project_id
+        update.project_id = project_id
         update.task_id = body.task_id
         update.morning_task_title = body.morning_task_title
         update.morning_planned_work = body.planned_work
@@ -104,7 +106,7 @@ async def submit_morning_update(
     else:
         update = TaskUpdate(
             user_id=user.id,
-            project_id=body.project_id,
+            project_id=project_id,
             task_id=body.task_id,
             report_date=today,
             morning_task_title=body.morning_task_title,

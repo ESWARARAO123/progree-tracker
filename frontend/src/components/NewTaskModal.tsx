@@ -1,19 +1,36 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { CheckSquare, X, UserPlus, Check } from 'lucide-react';
-import type { Priority, TaskStatus } from '../types';
+import type { Priority, TaskStatus, User } from '../types';
 
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  initialProjectId?: string;
 }
 
-export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
+export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose, initialProjectId }) => {
   const { createTask, projects, users, currentUser } = useApp();
   const activeUsers = users.filter(u => u.isActive);
 
-  const [projectId, setProjectId] = useState(projects[0]?.id || '');
+  const isAdmin = currentUser?.role === 'ADMIN';
+  const ownedProjectIds = new Set(
+    projects.filter(p => p.owner?.id === currentUser?.id).map(p => p.id)
+  );
+  const memberProjectIds = new Set(
+    projects.filter(p => p.assignedUsers.some(u => u.id === currentUser?.id)).map(p => p.id)
+  );
+  const visibleProjects = isAdmin
+    ? projects
+    : projects.filter(p => ownedProjectIds.has(p.id) || memberProjectIds.has(p.id));
+
+  const initialProject =
+    projects.find(p => p.id === (initialProjectId || currentUser?.currentProjectId || '')) ||
+    projects.find(p => ownedProjectIds.has(p.id) || memberProjectIds.has(p.id)) ||
+    projects[0];
+
+  const [projectId, setProjectId] = useState(initialProject?.id || '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
@@ -21,12 +38,46 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [assignedToIds, setAssignedToIds] = useState<string[]>(() => currentUser?.id ? [currentUser.id] : []);
   const [dueDate, setDueDate] = useState('');
 
+  const selectedProject = projects.find(p => p.id === projectId);
+  const isOwnerOfSelected = !!selectedProject && selectedProject.owner?.id === currentUser?.id;
+
+  let assigneeCandidates: User[];
+  if (isAdmin) {
+    assigneeCandidates = activeUsers;
+  } else if (isOwnerOfSelected) {
+    assigneeCandidates = selectedProject.assignedUsers.filter(u => u.isActive);
+    if (!assigneeCandidates.some(u => u.id === currentUser?.id) && currentUser) {
+      assigneeCandidates = [...assigneeCandidates, currentUser];
+    }
+  } else {
+    assigneeCandidates = currentUser ? [currentUser] : [];
+  }
+
   if (!isOpen) return null;
 
   const toggleUser = (id: string) => {
     setAssignedToIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
+  };
+
+  const handleProjectChange = (id: string) => {
+    setProjectId(id);
+    const p = projects.find(x => x.id === id);
+    const owned = !!p && p.owner?.id === currentUser?.id;
+    let allowed: Set<string>;
+    if (isAdmin) {
+      allowed = new Set(activeUsers.map(u => u.id));
+    } else if (owned && p) {
+      allowed = new Set(p.assignedUsers.map(u => u.id));
+      if (currentUser?.id) allowed.add(currentUser.id);
+    } else {
+      allowed = new Set(currentUser?.id ? [currentUser.id] : []);
+    }
+    setAssignedToIds(prev => {
+      const kept = prev.filter(x => allowed.has(x));
+      return kept.length > 0 ? kept : (currentUser?.id ? [currentUser.id] : []);
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,7 +88,7 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
     createTask({
       projectId,
-      projectName: proj?.name || 'Project',
+      projectName: projectId ? (proj?.name || 'Project') : 'Others',
       title,
       description,
       priority,
@@ -72,13 +123,17 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
             <label className="block text-xs font-semibold text-slate-300 mb-1">Target Project *</label>
             <select
               value={projectId}
-              onChange={e => setProjectId(e.target.value)}
+              onChange={e => handleProjectChange(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none"
             >
-              {projects.map(p => (
+              {visibleProjects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
+              <option value="">Others (no specific project)</option>
             </select>
+            {visibleProjects.length === 0 && (
+              <p className="text-[10px] text-amber-400 mt-1">You are not assigned to any project yet. Ask an admin to add you.</p>
+            )}
           </div>
 
           <div>
@@ -111,7 +166,7 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </label>
 
             <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-2 max-h-32 overflow-y-auto space-y-1">
-              {activeUsers.map(u => {
+              {assigneeCandidates.map(u => {
                 const selected = assignedToIds.includes(u.id);
                 return (
                   <button
@@ -129,9 +184,15 @@ export const NewTaskModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   </button>
                 );
               })}
+              {assigneeCandidates.length === 0 && (
+                <p className="text-[10px] text-slate-500 px-2 py-1">No assignable users.</p>
+              )}
             </div>
             {assignedToIds.length > 0 && (
               <p className="text-[10px] text-blue-400 mt-1">{assignedToIds.length} assignee{assignedToIds.length > 1 ? 's' : ''} selected (will replicate to all assigned users)</p>
+            )}
+            {!isAdmin && !isOwnerOfSelected && (
+              <p className="text-[10px] text-slate-500 mt-1">Only admins and project owners can assign tasks to other team members.</p>
             )}
           </div>
 

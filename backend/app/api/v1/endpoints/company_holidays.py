@@ -17,7 +17,18 @@ async def list_company_holidays(
     user: User = Depends(get_current_user),
 ):
     result = await db.execute(select(CompanyHoliday).order_by(CompanyHoliday.date.asc()))
-    return result.scalars().all()
+    holidays = result.scalars().all()
+    return [
+        CompanyHolidayResponse(
+            id=str(h.id),
+            name=h.name,
+            description=h.description,
+            date=h.date,
+            created_by=str(h.created_by) if h.created_by else None,
+            created_at=h.created_at,
+        )
+        for h in holidays
+    ]
 
 
 @router.post("/", response_model=CompanyHolidayResponse, status_code=status.HTTP_201_CREATED)
@@ -35,7 +46,14 @@ async def create_company_holiday(
     db.add(holiday)
     await db.commit()
     await db.refresh(holiday)
-    return holiday
+    return CompanyHolidayResponse(
+        id=str(holiday.id),
+        name=holiday.name,
+        description=holiday.description,
+        date=holiday.date,
+        created_by=str(holiday.created_by) if holiday.created_by else None,
+        created_at=holiday.created_at,
+    )
 
 
 @router.delete("/{holiday_id}", status_code=status.HTTP_204_NO_CONTENT)

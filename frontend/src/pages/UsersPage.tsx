@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
-import { UserPlus, Shield, User as UserIcon, ToggleLeft, ToggleRight, Pencil, Trash2, X, RefreshCw, KeyRound, Copy, Calendar, FileSpreadsheet, Presentation } from 'lucide-react';
+import { UserPlus, Shield, User as UserIcon, ToggleLeft, ToggleRight, Pencil, Trash2, X, RefreshCw, KeyRound, Copy } from 'lucide-react';
 
 interface User {
   id: string;
@@ -36,37 +36,10 @@ export const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [timeframe, setTimeframe] = useState<'1WEEK' | 'ALL'>('1WEEK');
-  const [exportingExcel, setExportingExcel] = useState(false);
-  const [exportingPPT, setExportingPPT] = useState(false);
   const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'EMPLOYEE', department: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [createdPassword, setCreatedPassword] = useState('');
-
-  const handleExportExcel = async () => {
-    if (!token) return;
-    try {
-      setExportingExcel(true);
-      await api.exportUpdatesExcel(token, 7);
-    } catch (err: any) {
-      alert(err.message || 'Failed to export Excel report');
-    } finally {
-      setExportingExcel(false);
-    }
-  };
-
-  const handleExportPPT = async () => {
-    if (!token) return;
-    try {
-      setExportingPPT(true);
-      await api.exportUpdatesPPT(token, 7);
-    } catch (err: any) {
-      alert(err.message || 'Failed to export PPT');
-    } finally {
-      setExportingPPT(false);
-    }
-  };
 
   // Edit state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -197,57 +170,10 @@ export const UsersPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white">User Management & Performance</h2>
-          <p className="text-sm text-slate-400 mt-1">Manage system users, view activity updates, and export weekly progress reports</p>
+          <p className="text-sm text-slate-400 mt-1">Manage system users, view activity updates, and track performance</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Timeframe selector toggle */}
-          <div className="flex items-center space-x-1 bg-slate-900 border border-slate-700/80 p-1 rounded-xl text-xs">
-            <button
-              type="button"
-              onClick={() => setTimeframe('1WEEK')}
-              className={`px-3 py-1.5 rounded-lg font-semibold flex items-center space-x-1.5 transition ${
-                timeframe === '1WEEK'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Last 1 Week</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeframe('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                timeframe === 'ALL'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <span>All Time</span>
-            </button>
-          </div>
-
-          <button
-            onClick={handleExportExcel}
-            disabled={exportingExcel}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
-            title="Export last 1 week updates to Excel (.xlsx)"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>{exportingExcel ? 'Exporting...' : 'Excel'}</span>
-          </button>
-
-          <button
-            onClick={handleExportPPT}
-            disabled={exportingPPT}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-orange-600/30 transition disabled:opacity-50"
-            title="Export last 1 week updates to PowerPoint (.pptx)"
-          >
-            <Presentation className="w-4 h-4" />
-            <span>{exportingPPT ? 'Exporting...' : 'PPT'}</span>
-          </button>
-
           <button
             onClick={() => setShowForm(!showForm)}
             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-blue-600/30 transition"

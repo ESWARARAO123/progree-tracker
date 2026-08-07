@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class MorningUpdateRequest(BaseModel):
-    project_id: str
+    project_id: str | None = None
     task_id: str | None = None
     morning_task_title: str | None = None
     planned_work: str

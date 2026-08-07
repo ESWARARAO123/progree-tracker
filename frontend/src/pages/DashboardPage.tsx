@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Users, CheckCircle2, AlertTriangle, Briefcase, FileCheck, Sun, Moon, ArrowUpRight, TrendingUp, CalendarClock, Clock, ListTodo } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import * as api from '../api';
+import { Users, CheckCircle2, AlertTriangle, Briefcase, FileCheck, Sun, Moon, ArrowUpRight, TrendingUp, CalendarClock, Clock, ListTodo, CalendarDays, FileSpreadsheet, Presentation, Download, ChevronDown } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
 import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
 import { ProjectJoinBanner } from '../components/ProjectJoinBanner';
@@ -12,9 +14,52 @@ interface Props {
 
 export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningModal }) => {
   const { currentUser, users, projects, tasks, updates, loading } = useApp();
+  const { token } = useAuth();
+  const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const today = todayStr();
   const hour = new Date().getHours();
+
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+
+  const lastWeekUpdates = updates
+    .filter(u => u.userId === currentUser.id && u.reportDate >= weekStartStr)
+    .sort((a, b) => b.reportDate.localeCompare(a.reportDate));
+
+  const weekTotalHours = lastWeekUpdates.reduce((sum, u) => sum + (u.eveningHoursSpent || 0), 0);
+  const weekDaysLogged = new Set(lastWeekUpdates.filter(u => u.morningSubmittedAt || u.eveningSubmittedAt).map(u => u.reportDate)).size;
+  const weekCompletedDays = lastWeekUpdates.filter(u => u.morningSubmittedAt && u.eveningSubmittedAt).length;
+
+  const runExport = async (kind: 'excel' | 'ppt') => {
+    if (!token) return;
+    try {
+      setExporting(true);
+      if (kind === 'excel') {
+        await api.exportUpdatesExcel(token, 7);
+      } else {
+        await api.exportUpdatesPPT(token, 7);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to export report');
+    } finally {
+      setExporting(false);
+      setExportOpen(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -618,6 +663,158 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
               <p className="text-xs text-slate-500">Not submitted yet</p>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* My Last 7 Days */}
+      <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+        <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h3 className="font-bold text-sm text-white flex items-center space-x-2">
+              <CalendarDays className="w-4 h-4 text-emerald-400" />
+              <span>My Last 7 Days</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Your daily work updates from the past week ({weekStartStr} to {today})
+            </p>
+          </div>
+
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setExportOpen(prev => !prev)}
+              disabled={exporting}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-emerald-600/30 transition disabled:opacity-50"
+              title="Export last 1 week updates"
+            >
+              <Download className="w-4 h-4" />
+              <span>{exporting ? 'Exporting...' : 'Export'}</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+
+            {exportOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-20 text-xs">
+                <button
+                  onClick={() => runExport('excel')}
+                  disabled={exporting}
+                  className="w-full flex items-center space-x-2.5 px-4 py-3 text-left text-slate-200 hover:bg-slate-800 transition disabled:opacity-50"
+                  title="Export last 1 week updates as formatted Excel (.xlsx)"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                  <span className="font-semibold">Export to Excel (.xlsx)</span>
+                </button>
+                <button
+                  onClick={() => runExport('ppt')}
+                  disabled={exporting}
+                  className="w-full flex items-center space-x-2.5 px-4 py-3 text-left text-slate-200 hover:bg-slate-800 transition border-t border-slate-800 disabled:opacity-50"
+                  title="Export last 1 week updates as PowerPoint Presentation (.pptx)"
+                >
+                  <Presentation className="w-4 h-4 text-amber-400" />
+                  <span className="font-semibold">Export to PPT (.pptx)</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Week summary */}
+        <div className="grid grid-cols-3 gap-4 p-5 border-b border-slate-800">
+          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center space-x-1">
+              <Clock className="w-3 h-3 text-blue-400" />
+              <span>Hours Logged</span>
+            </div>
+            <div className="text-xl font-bold text-white">{weekTotalHours.toFixed(1)} <span className="text-xs text-slate-500">hrs</span></div>
+          </div>
+          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center space-x-1">
+              <Sun className="w-3 h-3 text-amber-400" />
+              <span>Days Logged</span>
+            </div>
+            <div className="text-xl font-bold text-amber-300">{weekDaysLogged}<span className="text-xs text-slate-500"> / 7 days</span></div>
+          </div>
+          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center space-x-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <span>Full Updates</span>
+            </div>
+            <div className="text-xl font-bold text-emerald-400">{weekCompletedDays}<span className="text-xs text-slate-500"> days</span></div>
+          </div>
+        </div>
+
+        {/* Week updates table */}
+        <div className="overflow-x-auto">
+          {lastWeekUpdates.length === 0 ? (
+            <div className="p-10 text-center text-slate-500 space-y-2">
+              <Download className="w-8 h-8 mx-auto text-slate-600 opacity-50" />
+              <p className="text-sm font-medium">No work updates found in the last 7 days.</p>
+              <p className="text-xs">Submit your morning & evening updates to start building your weekly report.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 uppercase text-[10px] tracking-wider">
+                <tr>
+                  <th className="p-3">Date</th>
+                  <th className="p-3">Morning Plan</th>
+                  <th className="p-3">Est. Hrs</th>
+                  <th className="p-3">Evening Completed</th>
+                  <th className="p-3">Hours</th>
+                  <th className="p-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-slate-300">
+                {lastWeekUpdates.map(u => {
+                  const isComplete = u.morningSubmittedAt && u.eveningSubmittedAt;
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-800/40 transition">
+                      <td className="p-3 font-mono text-[11px] text-slate-300 whitespace-nowrap">{u.reportDate}</td>
+                      <td className="p-3 max-w-xs">
+                        {u.morningSubmittedAt ? (
+                          <div className="space-y-0.5">
+                            <p className="text-slate-200 truncate">{u.morningPlannedWork || '—'}</p>
+                            {u.morningTaskTitle && <p className="text-[10px] text-emerald-400">Task: {u.morningTaskTitle}</p>}
+                            {u.morningBlockers && <p className="text-[10px] text-rose-400">Blocker: {u.morningBlockers}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 italic">Not submitted</span>
+                        )}
+                      </td>
+                      <td className="p-3 font-semibold text-white">{u.morningEstHours ? `${u.morningEstHours}h` : '—'}</td>
+                      <td className="p-3 max-w-xs">
+                        {u.eveningSubmittedAt ? (
+                          <div className="space-y-0.5">
+                            <p className="text-slate-200 truncate">{u.eveningCompletedWork || '—'}</p>
+                            {u.eveningNextDayPlan && <p className="text-[10px] text-blue-400">Next: {u.eveningNextDayPlan}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 italic">Pending evening</span>
+                        )}
+                      </td>
+                      <td className="p-3 font-semibold text-white">{u.eveningHoursSpent ? `${u.eveningHoursSpent}h` : '—'}</td>
+                      <td className="p-3">
+                        {isComplete ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            COMPLETE
+                          </span>
+                        ) : u.morningSubmittedAt ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            MORNING ONLY
+                          </span>
+                        ) : u.eveningSubmittedAt ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            EVENING ONLY
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                            PENDING
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

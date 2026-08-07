@@ -8,6 +8,8 @@ from sqlalchemy.orm import selectinload
 from app.db.base import get_db
 from app.models.user import User
 from app.models.task import Task
+from app.models.project import Project
+from app.models.project_assignment import ProjectAssignment
 from app.schemas.task import TaskResponse, CreateTaskRequest, UpdateTaskStatusRequest, UpdateTaskRequest
 from app.api.v1.endpoints.auth import get_current_user
 
@@ -21,7 +23,7 @@ async def list_tasks(
     user: User = Depends(get_current_user),
 ):
     query = select(Task).options(
-        selectinload(Task.project), selectinload(Task.assignee)
+        selectinload(Task.project), selectinload(Task.assignee), selectinload(Task.creator)
     )
 
     if project_id:
@@ -36,14 +38,16 @@ async def list_tasks(
     return [
         TaskResponse(
             id=str(t.id),
-            project_id=str(t.project_id),
-            project_name=t.project.name if t.project else None,
+            project_id=str(t.project_id) if t.project_id else None,
+            project_name=t.project.name if t.project else "Others",
             title=t.title,
             description=t.description,
             priority=t.priority,
             status=t.status,
             assigned_to=str(t.assigned_to) if t.assigned_to else None,
             assigned_to_name=t.assignee.full_name if t.assignee else None,
+            created_by=str(t.created_by) if t.created_by else None,
+            created_by_name=t.creator.full_name if t.creator else None,
             due_date=t.due_date,
             attachment_url=t.attachment_url,
             attachment_name=t.attachment_name,
@@ -63,14 +67,66 @@ async def create_task(
     if not target_user_ids:
         target_user_ids = [str(user.id)]
 
+    project_uuid = None
+    if body.project_id and body.project_id.strip():
+        try:
+            project_uuid = UUID(body.project_id.strip())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid project id")
+
+    project = None
+    if project_uuid:
+        project_result = await db.execute(select(Project).where(Project.id == project_uuid))
+        project = project_result.scalar_one_or_none()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    target_uuids = {UUID(uid) for uid in target_user_ids}
+    existing_result = await db.execute(select(User.id).where(User.id.in_(target_uuids)))
+    existing_ids = {row[0] for row in existing_result.all()}
+    missing = target_uuids - existing_ids
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid assignee user(s): {', '.join(str(m) for m in missing)}",
+        )
+
+    if user.role.name != "ADMIN":
+        if project is None:
+            if target_uuids != {user.id}:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only add tasks assigned to yourself.",
+                )
+        else:
+            member_result = await db.execute(
+                select(ProjectAssignment.user_id).where(ProjectAssignment.project_id == project.id)
+            )
+            member_ids = {row[0] for row in member_result.all()}
+            if project.owner_id:
+                member_ids.add(project.owner_id)
+
+            if user.id == project.owner_id:
+                if not target_uuids.issubset(member_ids):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Project owners can only assign tasks to members of their project.",
+                    )
+            elif target_uuids != {user.id}:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only add tasks assigned to yourself.",
+                )
+
     created_tasks = []
     for uid in target_user_ids:
         task = Task(
-            project_id=UUID(body.project_id),
+            project_id=project_uuid,
             title=body.title,
             description=body.description,
             priority=body.priority,
             assigned_to=UUID(uid),
+            created_by=user.id,
             due_date=body.due_date,
             attachment_url=body.attachment_url,
             attachment_name=body.attachment_name,
@@ -83,21 +139,23 @@ async def create_task(
     first_task = created_tasks[0]
     result = await db.execute(
         select(Task).where(Task.id == first_task.id).options(
-            selectinload(Task.project), selectinload(Task.assignee)
+            selectinload(Task.project), selectinload(Task.assignee), selectinload(Task.creator)
         )
     )
     task = result.scalar_one()
 
     return TaskResponse(
         id=str(task.id),
-        project_id=str(task.project_id),
-        project_name=task.project.name if task.project else None,
+        project_id=str(task.project_id) if task.project_id else None,
+        project_name=task.project.name if task.project else "Others",
         title=task.title,
         description=task.description,
         priority=task.priority,
         status=task.status,
         assigned_to=str(task.assigned_to) if task.assigned_to else None,
         assigned_to_name=task.assignee.full_name if task.assignee else None,
+        created_by=str(task.created_by) if task.created_by else None,
+        created_by_name=task.creator.full_name if task.creator else None,
         due_date=task.due_date,
         attachment_url=task.attachment_url,
         attachment_name=task.attachment_name,
@@ -114,7 +172,7 @@ async def update_task_status(
 ):
     result = await db.execute(
         select(Task).where(Task.id == UUID(task_id)).options(
-            selectinload(Task.project), selectinload(Task.assignee)
+            selectinload(Task.project), selectinload(Task.assignee), selectinload(Task.creator)
         )
     )
     task = result.scalar_one_or_none()
@@ -135,14 +193,16 @@ async def update_task_status(
 
     return TaskResponse(
         id=str(task.id),
-        project_id=str(task.project_id),
-        project_name=task.project.name if task.project else None,
+        project_id=str(task.project_id) if task.project_id else None,
+        project_name=task.project.name if task.project else "Others",
         title=task.title,
         description=task.description,
         priority=task.priority,
         status=task.status,
         assigned_to=str(task.assigned_to) if task.assigned_to else None,
         assigned_to_name=task.assignee.full_name if task.assignee else None,
+        created_by=str(task.created_by) if task.created_by else None,
+        created_by_name=task.creator.full_name if task.creator else None,
         due_date=task.due_date,
         attachment_url=task.attachment_url,
         attachment_name=task.attachment_name,
@@ -159,7 +219,7 @@ async def update_task(
 ):
     result = await db.execute(
         select(Task).where(Task.id == UUID(task_id)).options(
-            selectinload(Task.project), selectinload(Task.assignee)
+            selectinload(Task.project), selectinload(Task.assignee), selectinload(Task.creator)
         )
     )
     task = result.scalar_one_or_none()
@@ -191,21 +251,23 @@ async def update_task(
 
     result = await db.execute(
         select(Task).where(Task.id == task.id).options(
-            selectinload(Task.project), selectinload(Task.assignee)
+            selectinload(Task.project), selectinload(Task.assignee), selectinload(Task.creator)
         )
     )
     task = result.scalar_one()
 
     return TaskResponse(
         id=str(task.id),
-        project_id=str(task.project_id),
-        project_name=task.project.name if task.project else None,
+        project_id=str(task.project_id) if task.project_id else None,
+        project_name=task.project.name if task.project else "Others",
         title=task.title,
         description=task.description,
         priority=task.priority,
         status=task.status,
         assigned_to=str(task.assigned_to) if task.assigned_to else None,
         assigned_to_name=task.assignee.full_name if task.assignee else None,
+        created_by=str(task.created_by) if task.created_by else None,
+        created_by_name=task.creator.full_name if task.creator else None,
         due_date=task.due_date,
         attachment_url=task.attachment_url,
         attachment_name=task.attachment_name,

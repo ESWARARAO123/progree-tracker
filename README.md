@@ -40,17 +40,20 @@ tracker/
 ├── docs/
 │   └── SRS.md                       # Complete Software Requirements Specification
 ├── database/
-│   └── schema.sql                   # Enterprise PostgreSQL DDL Schema Script
+│   └── schema.sql                   # Legacy PostgreSQL DDL Script (used only for reference)
 ├── backend/
+│   ├── alembic/                     # Alembic migration environment
+│   │   └── versions/                # Versioned migrations (0001_initial)
 │   ├── app/
 │   │   ├── api/v1/                  # FastAPI Routers (Auth, Updates, Projects, Tasks, etc.)
 │   │   ├── core/                    # Security, Password Hashing, JWT & Config Settings
-│   │   ├── db/                      # SQLAlchemy Async Database Engine
+│   │   ├── db/                      # SQLAlchemy Async Engine & init_database bootstrap
 │   │   ├── models/                  # SQLAlchemy Data Models
 │   │   ├── schemas/                 # Pydantic Request/Response Validation
 │   │   ├── services/                # Business Logic & Missed Update Scanners
 │   │   ├── tasks/                   # Celery Background Cron Tasks (10 PM Reminder)
 │   │   └── main.py                  # FastAPI Entrypoint
+│   ├── alembic.ini
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
@@ -96,6 +99,40 @@ docker-compose up --build
 - **Frontend SPA:** `http://localhost`
 - **FastAPI OpenAPI Swagger Docs:** `http://localhost:8000/docs`
 - **PostgreSQL Database:** `localhost:5432`
+
+---
+
+## 🗄️ Database Migrations
+
+The schema is managed with **Alembic**. On startup the backend automatically:
+
+1. Creates the application database if it does not exist (`app/db/init_database.py`).
+2. Runs `alembic upgrade head` to create/upgrade every table.
+
+You do **not** need to run `database/schema.sql` — it is kept only as a reference for the
+original hand-written schema. Migrations are idempotent and can also be applied on top of an
+existing `schema.sql`-initialized database.
+
+### Manual migration commands
+
+```bash
+cd backend
+# Apply all pending migrations
+alembic upgrade head
+
+# Create a new migration after changing app/models/*
+alembic revision --autogenerate -m "describe change"
+
+# Revert the last migration
+alembic downgrade -1
+```
+
+Environment variables (`POSTGRES_SERVER`, `POSTGRES_PORT`, `POSTGRES_USER`,
+`POSTGRES_PASSWORD`, `POSTGRES_DB`) control which database the migrations target —
+same settings the API uses at runtime.
+
+> Note: on a fresh install the first startup seeds the default `ADMIN` / `EMPLOYEE`
+> roles and the admin account `admin@sierraedge.ai` (password `admin123`).
 
 ---
 

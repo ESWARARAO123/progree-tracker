@@ -90,6 +90,27 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({ isOpen, onCl
     }
   };
 
+  const handleDownloadFile = async (e: React.MouseEvent, fileUrl: string, fileName?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const res = await fetch(fileUrl);
+      if (!res.ok) throw new Error('File download failed');
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName || fileUrl.split('/').pop() || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Blob download failed, opening direct link:', err);
+      window.open(fileUrl, '_blank');
+    }
+  };
+
   const isImageFile = (fileName?: string) => {
     if (!fileName) return false;
     const ext = fileName.split('.').pop()?.toLowerCase();
@@ -166,31 +187,31 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({ isOpen, onCl
                             <img
                               src={msg.fileUrl}
                               alt={msg.fileName || 'Attachment'}
-                              className="max-h-48 rounded-lg object-cover border border-white/10"
+                              className="max-h-56 rounded-lg object-cover border border-white/10 cursor-pointer hover:opacity-90 transition"
+                              onClick={(e) => handleDownloadFile(e, msg.fileUrl!, msg.fileName)}
+                              title="Click to download screenshot"
                             />
-                            <a
-                              href={msg.fileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center space-x-1 text-[11px] underline opacity-90 hover:opacity-100"
+                            <button
+                              type="button"
+                              onClick={(e) => handleDownloadFile(e, msg.fileUrl!, msg.fileName)}
+                              className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-blue-300 hover:text-white transition bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-700/80"
                             >
-                              <Download className="w-3 h-3" />
-                              <span>{msg.fileName || 'Download Screenshot'}</span>
-                            </a>
+                              <Download className="w-3.5 h-3.5 text-blue-400" />
+                              <span className="truncate max-w-[200px]">{msg.fileName || 'Download Screenshot'}</span>
+                            </button>
                           </div>
                         ) : (
-                          <a
-                            href={msg.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={`flex items-center space-x-2 p-2 rounded-xl border transition ${
-                              isMe ? 'bg-blue-700/60 border-blue-400/40 text-white' : 'bg-slate-900 border-slate-700 text-slate-200'
+                          <button
+                            type="button"
+                            onClick={(e) => handleDownloadFile(e, msg.fileUrl!, msg.fileName)}
+                            className={`w-full flex items-center space-x-2 p-2.5 rounded-xl border text-left transition ${
+                              isMe ? 'bg-blue-700/60 border-blue-400/40 text-white hover:bg-blue-700' : 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800'
                             }`}
                           >
                             <FileText className="w-4 h-4 shrink-0 text-amber-400" />
-                            <span className="truncate flex-1 font-medium">{msg.fileName || 'Download File'}</span>
-                            <Download className="w-3.5 h-3.5 shrink-0" />
-                          </a>
+                            <span className="truncate flex-1 font-semibold">{msg.fileName || 'Download File'}</span>
+                            <Download className="w-4 h-4 shrink-0 text-blue-400" />
+                          </button>
                         )}
                       </div>
                     )}

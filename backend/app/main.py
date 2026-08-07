@@ -4,11 +4,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
+import asyncio
+import logging
 import os
+from pathlib import Path
+from alembic import command
+from alembic.config import Config
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.db.base import engine, Base, async_session
+from app.db.init_database import ensure_database_exists
 from app.models.role import Role
 from app.models.user import User
 from app.models.project_request import ProjectRequest
@@ -20,9 +26,29 @@ from app.api.v1.endpoints import (
 )
 from sqlalchemy import text as sa_text
 
+logger = logging.getLogger(__name__)
+
+
+def _run_alembic_upgrade() -> None:
+    """Apply pending Alembic migrations (creates the full schema on a fresh DB)."""
+    backend_dir = Path(__file__).resolve().parent.parent
+    cfg = Config(str(backend_dir / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.upgrade(cfg, "head")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 1. Make sure the application database exists (fresh servers).
+    # 2. Apply Alembic migrations to create/upgrade the schema.
+    loop = asyncio.get_running_loop()
+    try:
+        await loop.run_in_executor(None, ensure_database_exists)
+        await loop.run_in_executor(None, _run_alembic_upgrade)
+    except Exception:
+        logger.exception("Database bootstrap failed")
+        raise
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.execute(sa_text(

@@ -11,7 +11,11 @@ services:
       - "5444:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d daily_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -34,9 +38,13 @@ services:
       - POSTGRES_PASSWORD=seai123
       - POSTGRES_DB=daily_tracker
       - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   celery_worker:
     build:
@@ -48,8 +56,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - POSTGRES_SERVER=db
     depends_on:
-      - backend
-      - redis
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   celery_beat:
     build:
@@ -75,3 +87,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

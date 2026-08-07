@@ -47,7 +47,7 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
     const activeTaskId = matchedTask ? matchedTask.id : (selectedTaskId || null);
 
     submitMorningUpdate({
-      projectId,
+      projectId: projectId || null,
       taskId: activeTaskId,
       taskTitle: primaryTask.trim() || matchedTask?.title || undefined,
       plannedWork,
@@ -126,18 +126,20 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Select Project *</label>
-              <select
-                value={projectId}
-                onChange={e => setProjectId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
-              >
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.priority})</option>
-                ))}
-              </select>
-            </div>
+            {!selectedTaskId && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Select Project *</label>
+                <select
+                  value={projectId}
+                  onChange={e => setProjectId(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                >
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.priority})</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Primary Task Title *</label>
