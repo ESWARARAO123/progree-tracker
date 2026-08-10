@@ -313,14 +313,14 @@ export const CalendarPage: React.FC = () => {
                   <div className="absolute inset-x-1.5 top-9 z-10 bg-slate-800 border border-indigo-500/40 rounded-xl shadow-2xl p-2 space-y-1.5">
                     <div className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider px-1">{dateStrFor(day)}</div>
                     <button
-                      onClick={e => { e.stopPropagation(); setSelectedDay(null); setIsMeetingOpen(true); }}
+                      onClick={e => { e.stopPropagation(); setIsMeetingOpen(true); }}
                       className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition"
                     >
                       <CalendarDays className="w-3 h-3" />
                       <span>Plan Meeting</span>
                     </button>
                     <button
-                      onClick={e => { e.stopPropagation(); setSelectedDay(null); setIsHolidayOpen(true); }}
+                      onClick={e => { e.stopPropagation(); setIsHolidayOpen(true); }}
                       className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-semibold transition"
                     >
                       <PartyPopper className="w-3 h-3" />
@@ -343,7 +343,7 @@ export const CalendarPage: React.FC = () => {
 
       <PlanMeetingModal
         isOpen={isMeetingOpen}
-        onClose={() => { setIsMeetingOpen(false); setEditingMeeting(null); }}
+        onClose={() => { setIsMeetingOpen(false); setEditingMeeting(null); setSelectedDay(null); }}
         date={selectedDay !== null ? dateStrFor(selectedDay) : today}
         meeting={editingMeeting}
       />
@@ -359,7 +359,7 @@ export const CalendarPage: React.FC = () => {
       />
       <CompanyHolidayModal
         isOpen={isHolidayOpen}
-        onClose={() => setIsHolidayOpen(false)}
+        onClose={() => { setIsHolidayOpen(false); setSelectedDay(null); }}
         date={selectedDay !== null ? dateStrFor(selectedDay) : today}
       />
     </div>

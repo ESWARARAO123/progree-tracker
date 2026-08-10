@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Users, Check, X, Clock, MessageSquare } from 'lucide-react';
+import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Users, Check, X, Clock, MessageSquare, FolderOpen } from 'lucide-react';
 import { NewProjectModal } from '../components/NewProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { DeleteProjectModal } from '../components/DeleteProjectModal';
 import { ProjectChatModal } from '../components/ProjectChatModal';
+import { ProjectDocumentsModal } from '../components/ProjectDocumentsModal';
 import { NewTaskModal } from '../components/NewTaskModal';
 import { isWithinDays } from '../utils/date';
 import type { Project } from '../types';
@@ -15,6 +16,7 @@ export const ProjectsPage: React.FC = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [chatProject, setChatProject] = useState<Project | null>(null);
+  const [documentsProject, setDocumentsProject] = useState<Project | null>(null);
   const [taskProject, setTaskProject] = useState<Project | null>(null);
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
   const [membersMenuProjectId, setMembersMenuProjectId] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export const ProjectsPage: React.FC = () => {
     return (
       <div key={p.id} className={`glass-panel p-5 rounded-2xl border space-y-4 flex flex-col justify-between transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
         <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-2">
             <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                 p.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
@@ -87,7 +89,7 @@ export const ProjectsPage: React.FC = () => {
             </div>
 
             {/* Top Right Action Toolbar (Team Members, Create Task, Project Chat, Admin Menu) */}
-            <div className="flex items-center space-x-1.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
               {/* 1. Team Members Button with Popover */}
               <div className="relative" data-members-menu>
                 <button
@@ -155,6 +157,16 @@ export const ProjectsPage: React.FC = () => {
                   <span className="text-[11px]">Task</span>
                 </button>
               )}
+
+              {/* 3. Project Database Button */}
+              <button
+                onClick={() => setDocumentsProject(p)}
+                className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center space-x-1 transition"
+                title="Project Database (Files)"
+              >
+                <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px]">Files</span>
+              </button>
 
               {/* 3. Project Chat Button */}
               <button
@@ -335,6 +347,15 @@ export const ProjectsPage: React.FC = () => {
             <span>Chat</span>
           </button>
 
+          <button
+            onClick={() => setDocumentsProject(p)}
+            className="px-2 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-semibold flex items-center justify-center space-x-1 hover:bg-amber-500/30 transition"
+            title="Project Database (Files)"
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            <span>Files</span>
+          </button>
+
           {isSelected ? (
             <span className="px-2 py-1.5 rounded-xl text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
               Active
@@ -499,6 +520,11 @@ export const ProjectsPage: React.FC = () => {
         isOpen={!!chatProject}
         onClose={() => setChatProject(null)}
         project={chatProject}
+      />
+      <ProjectDocumentsModal
+        isOpen={!!documentsProject}
+        onClose={() => setDocumentsProject(null)}
+        project={documentsProject}
       />
       <NewTaskModal
         isOpen={!!taskProject}

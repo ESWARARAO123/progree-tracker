@@ -94,6 +94,19 @@ export interface ProjectChatMessage {
   createdAt: string;
 }
 
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  userId: string;
+  userName?: string;
+  fileUrl: string;
+  fileName: string;
+  contentType?: string;
+  size?: number;
+  source?: string;
+  createdAt?: string;
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -169,6 +182,19 @@ export interface LeaveRequest {
   reviewedBy?: string;
   adminComment?: string;
   createdAt: string;
+}
+
+export interface UserLeaveUsage {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  department: string;
+  designation: string;
+  isActive: boolean;
+  usedLeave: number;
+  usedWfh: number;
+  usedWfbo: number;
+  total: number;
 }
 
 export interface AppNotification {

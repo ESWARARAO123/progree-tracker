@@ -11,12 +11,35 @@ from app.models.user import User
 from app.models.task import Task
 from app.models.project import Project
 from app.models.project_assignment import ProjectAssignment
+from app.models.project_document import ProjectDocument
 from app.schemas.task import TaskResponse, CreateTaskRequest, UpdateTaskStatusRequest, UpdateTaskRequest
 from app.api.v1.endpoints.auth import get_current_user
 
 router = APIRouter()
 
 EDIT_WINDOW = timedelta(days=7)
+
+
+def _register_attachment(
+    db: AsyncSession,
+    project_id: UUID | None,
+    user_id: UUID,
+    attachment_url: str | None,
+    attachment_name: str | None,
+    source: str = "task",
+) -> None:
+    if not project_id or not attachment_url:
+        return
+    try:
+        db.add(ProjectDocument(
+            project_id=project_id,
+            user_id=user_id,
+            file_url=attachment_url,
+            file_name=attachment_name or attachment_url.split("/")[-1],
+            source=source,
+        ))
+    except Exception:
+        pass
 
 
 def _age_is_within(dt: datetime | None, window: timedelta) -> bool:
@@ -145,6 +168,10 @@ async def create_task(
         db.add(task)
         created_tasks.append(task)
 
+    if project_uuid and body.attachment_url:
+        for uid in target_user_ids:
+            _register_attachment(db, project_uuid, UUID(uid), body.attachment_url, body.attachment_name, source="task")
+
     await db.commit()
 
     first_task = created_tasks[0]
@@ -198,6 +225,9 @@ async def update_task_status(
         task.attachment_url = body.attachment_url
     if body.attachment_name is not None:
         task.attachment_name = body.attachment_name
+
+    if body.attachment_url:
+        _register_attachment(db, task.project_id, task.assigned_to, body.attachment_url, body.attachment_name, source="task")
 
     await db.commit()
     await db.refresh(task)
@@ -266,6 +296,9 @@ async def update_task(
         task.attachment_url = body.attachment_url
     if body.attachment_name is not None:
         task.attachment_name = body.attachment_name
+
+    if body.attachment_url:
+        _register_attachment(db, task.project_id, task.assigned_to or user.id, body.attachment_url, body.attachment_name, source="task")
 
     await db.commit()
     await db.refresh(task)

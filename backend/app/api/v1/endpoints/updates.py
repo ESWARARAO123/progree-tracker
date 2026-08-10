@@ -1,5 +1,7 @@
 from datetime import date, datetime, timezone
 
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,11 +10,36 @@ from sqlalchemy.orm import selectinload
 from app.db.base import get_db
 from app.models.user import User
 from app.models.task_update import TaskUpdate
+from app.models.project_document import ProjectDocument
 from app.schemas.update import MorningUpdateRequest, EveningUpdateRequest, TaskUpdateResponse
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 from app.core.notify import get_admin_users, create_notification
 
 router = APIRouter()
+
+
+async def _register_attachment(
+    db: AsyncSession,
+    project_id: str | None,
+    user: User,
+    attachment_url: str | None,
+    attachment_name: str | None,
+    content_type: str | None = None,
+) -> None:
+    if not project_id or not attachment_url:
+        return
+    try:
+        doc = ProjectDocument(
+            project_id=project_id,
+            user_id=user.id,
+            file_url=attachment_url,
+            file_name=attachment_name or os.path.basename(attachment_url),
+            content_type=content_type,
+            source="update",
+        )
+        db.add(doc)
+    except Exception:
+        pass
 
 
 @router.get("/", response_model=list[TaskUpdateResponse])
@@ -119,6 +146,8 @@ async def submit_morning_update(
         )
         db.add(update)
 
+    await _register_attachment(db, project_id, user, body.attachment_url, body.attachment_name)
+
     admins = await get_admin_users(db)
     for admin_user in admins:
         await create_notification(
@@ -210,6 +239,8 @@ async def submit_evening_update(
     if body.attachment_name:
         update.attachment_name = body.attachment_name
     update.evening_submitted_at = datetime.now(timezone.utc)
+
+    await _register_attachment(db, update.project_id, user, body.attachment_url, body.attachment_name)
 
     admins = await get_admin_users(db)
     for admin_user in admins:

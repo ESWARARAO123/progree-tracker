@@ -8,9 +8,17 @@ from sqlalchemy.orm import selectinload
 
 from app.db.base import get_db
 from app.models.user import User
+from app.models.role import Role
 from app.models.leave_request import LeaveRequest
 from app.models.notification import Notification
-from app.schemas.leave import LeaveRequestResponse, CreateLeaveRequest, ReviewLeaveRequest, LeaveBalanceResponse
+from app.schemas.leave import (
+    LeaveRequestResponse,
+    CreateLeaveRequest,
+    ReviewLeaveRequest,
+    LeaveBalanceResponse,
+    UserLeaveUsageResponse,
+    TodayLeaveResponse,
+)
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 from app.core.notify import get_admin_users, create_notification, send_leave_notification_email
 
@@ -49,6 +57,105 @@ async def _count_requests_in_month(
         )
     )
     return result.scalar_one()
+
+
+def _serialize(r: LeaveRequest) -> LeaveRequestResponse:
+    return LeaveRequestResponse(
+        id=str(r.id),
+        user_id=str(r.user_id),
+        user_name=r.user.full_name if r.user else None,
+        request_type=r.request_type,
+        start_date=r.start_date,
+        end_date=r.end_date,
+        reason=r.reason,
+        status=r.status,
+        reviewed_by=str(r.reviewed_by) if r.reviewed_by else None,
+        admin_comment=r.admin_comment,
+        created_at=r.created_at,
+        updated_at=r.updated_at,
+    )
+
+
+@router.get("/admin/today", response_model=TodayLeaveResponse)
+async def admin_today_view(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    today = date.today()
+
+    # Who is on leave today (approved requests that cover today)
+    on_leave_result = await db.execute(
+        select(LeaveRequest)
+        .where(
+            LeaveRequest.status == "APPROVED",
+            LeaveRequest.start_date <= today,
+            LeaveRequest.end_date >= today,
+        )
+        .options(selectinload(LeaveRequest.user))
+        .order_by(LeaveRequest.created_at.desc())
+    )
+    on_leave = [_serialize(r) for r in on_leave_result.scalars().all()]
+
+    # Requests submitted today (pending ones need approval/rejection)
+    requests_result = await db.execute(
+        select(LeaveRequest)
+        .where(LeaveRequest.created_at >= today)
+        .options(selectinload(LeaveRequest.user))
+        .order_by(LeaveRequest.created_at.desc())
+    )
+    requests_today = [_serialize(r) for r in requests_result.scalars().all()]
+
+    return TodayLeaveResponse(
+        on_leave_today=on_leave,
+        requests_today=requests_today,
+        date=today.isoformat(),
+    )
+
+
+@router.get("/admin/users-usage", response_model=list[UserLeaveUsageResponse])
+async def admin_users_usage(
+    month: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    if month:
+        try:
+            ref = datetime.strptime(month, "%Y-%m").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+    else:
+        ref = date.today()
+
+    start, end = _month_range(ref)
+    statuses = ["PENDING", "APPROVED"]
+
+    result = await db.execute(
+        select(User)
+        .join(Role, User.role_id == Role.id)
+        .where(Role.name == "EMPLOYEE")
+        .order_by(User.full_name.asc())
+    )
+    users = result.scalars().all()
+
+    usage = []
+    for u in users:
+        used_leave = await _count_requests_in_month(db, u.id, start, end, statuses, "LEAVE")
+        used_wfh = await _count_requests_in_month(db, u.id, start, end, statuses, "WFH")
+        used_wfbo = await _count_requests_in_month(db, u.id, start, end, statuses, "WFBO")
+        usage.append(UserLeaveUsageResponse(
+            user_id=str(u.id),
+            user_name=u.full_name,
+            user_email=u.email,
+            department=u.department,
+            designation=u.designation,
+            is_active=u.is_active,
+            used_leave=used_leave,
+            used_wfh=used_wfh,
+            used_wfbo=used_wfbo,
+            total=used_leave + used_wfh + used_wfbo,
+        ))
+
+    return usage
 
 
 @router.get("/", response_model=list[LeaveRequestResponse])

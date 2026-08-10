@@ -211,6 +211,45 @@ export async function uploadChatFile(token: string, projectId: string, file: Fil
   return handleResponse(res);
 }
 
+// Project Documents
+export async function getProjectDocuments(token: string, projectId: string) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/documents`, { headers: authHeaders(token) });
+  return handleResponse(res);
+}
+
+export async function uploadProjectDocument(token: string, projectId: string, file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/projects/${projectId}/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  return handleResponse(res);
+}
+
+export async function downloadProjectDocument(token: string, projectId: string, documentId: string) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/documents/${documentId}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Download failed' }));
+    throw new Error(err.detail || 'Download failed');
+  }
+  return res.blob();
+}
+
+export async function deleteProjectDocument(token: string, projectId: string, documentId: string) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/documents/${documentId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Delete failed' }));
+    throw new Error(err.detail || 'Delete failed');
+  }
+}
+
 // Uploads
 export async function uploadFile(token: string, file: File) {
   const formData = new FormData();
@@ -313,6 +352,17 @@ export async function reviewLeaveRequest(token: string, leaveId: string, data: a
   const res = await fetch(`${API_BASE}/leave/${leaveId}/review`, {
     method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
   });
+  return handleResponse(res);
+}
+
+export async function getAdminTodayLeave(token: string) {
+  const res = await fetch(`${API_BASE}/leave/admin/today`, { headers: authHeaders(token) });
+  return handleResponse(res);
+}
+
+export async function getAdminUsersUsage(token: string, month?: string) {
+  const qs = month ? `?month=${month}` : '';
+  const res = await fetch(`${API_BASE}/leave/admin/users-usage${qs}`, { headers: authHeaders(token) });
   return handleResponse(res);
 }
 

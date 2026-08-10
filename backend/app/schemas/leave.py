@@ -40,3 +40,22 @@ class LeaveRequestResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserLeaveUsageResponse(BaseModel):
+    user_id: str
+    user_name: str
+    user_email: str | None = None
+    department: str | None = None
+    designation: str | None = None
+    is_active: bool = True
+    used_leave: int = 0
+    used_wfh: int = 0
+    used_wfbo: int = 0
+    total: int = 0
+
+
+class TodayLeaveResponse(BaseModel):
+    on_leave_today: list[LeaveRequestResponse]
+    requests_today: list[LeaveRequestResponse]
+    date: str

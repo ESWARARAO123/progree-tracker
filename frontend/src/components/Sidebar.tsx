@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Sun, Moon, Briefcase, CheckSquare, Calendar as CalendarIcon, FileText, BarChart3, ShieldAlert, Users } from 'lucide-react';
+import { LayoutDashboard, Sun, Moon, Briefcase, CheckSquare, Calendar as CalendarIcon, FileText, BarChart3, ShieldAlert, Users, PanelLeftClose } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface SidebarProps {
@@ -7,10 +7,14 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   openMorningModal: () => void;
   openEveningModal: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openMorningModal, openEveningModal }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openMorningModal, openEveningModal, collapsed, onToggleCollapse }) => {
   const { currentUser } = useApp();
+
+  if (collapsed) return null;
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -26,7 +30,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openM
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-4 shrink-0 hidden md:flex">
+    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-4 shrink-0 hidden md:flex sticky top-0 self-start h-full overflow-y-auto">
+      <button
+        onClick={onToggleCollapse}
+        className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition"
+        title="Close sidebar"
+      >
+        <PanelLeftClose className="w-4 h-4" />
+      </button>
       {/* Quick Action Buttons for Updates — employees only */}
       {currentUser.role !== 'ADMIN' && (
         <div className="space-y-2">

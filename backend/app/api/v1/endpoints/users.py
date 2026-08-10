@@ -40,7 +40,9 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    result = await db.execute(select(User))
+    result = await db.execute(
+        select(User).order_by(User.department.asc().nulls_last(), User.full_name.asc())
+    )
     users = result.scalars().all()
     return [serialize_user(u) for u in users]
 

@@ -11,6 +11,7 @@ from app.db.base import get_db
 from app.models.user import User
 from app.models.project import Project
 from app.models.project_chat import ProjectChat
+from app.models.project_document import ProjectDocument
 from app.api.v1.endpoints.auth import get_current_user
 import os, uuid
 
@@ -127,15 +128,33 @@ async def upload_chat_file(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    proj_res = await db.execute(select(Project).where(Project.id == UUID(project_id)))
+    project = proj_res.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     ext = os.path.splitext(file.filename)[1] if file.filename else ""
     unique_name = f"{uuid.uuid4().hex}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
+    content = await file.read()
     with open(file_path, "wb") as f:
-        content = await file.read()
         f.write(content)
 
     file_url = f"/uploads/{unique_name}"
+
+    doc = ProjectDocument(
+        project_id=project.id,
+        user_id=user.id,
+        file_url=file_url,
+        file_name=file.filename or unique_name,
+        content_type=file.content_type,
+        size=len(content),
+        source="chat",
+    )
+    db.add(doc)
+    await db.commit()
+
     return {
         "file_url": file_url,
         "file_name": file.filename or unique_name,

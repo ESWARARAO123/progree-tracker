@@ -18,11 +18,13 @@ from app.db.init_database import ensure_database_exists
 from app.models.role import Role
 from app.models.user import User
 from app.models.project_request import ProjectRequest
+from app.models.task import Task
+from app.models.project_document import ProjectDocument
 from app.core.security import get_password_hash
 from app.api.v1.endpoints import (
     auth, users, projects, tasks, updates, leave, notifications,
     audit, dashboard, project_requests, meetings, company_holidays,
-    project_chat, uploads, export
+    project_chat, project_documents, uploads, export
 )
 from sqlalchemy import text as sa_text
 
@@ -112,6 +114,33 @@ async def lifespan(app: FastAPI):
             db.add(admin_user)
             await db.commit()
 
+        # Backfill: register existing task/update attachments into project document store
+        backfilled = 0
+        task_result = await db.execute(
+            select(Task).where(
+                Task.attachment_url.isnot(None),
+                Task.project_id.isnot(None),
+            )
+        )
+        for task in task_result.scalars().all():
+            existing = await db.execute(
+                select(ProjectDocument.id).where(
+                    ProjectDocument.project_id == task.project_id,
+                    ProjectDocument.file_url == task.attachment_url,
+                )
+            )
+            if not existing.scalar_one_or_none():
+                db.add(ProjectDocument(
+                    project_id=task.project_id,
+                    user_id=task.assigned_to or task.created_by,
+                    file_url=task.attachment_url,
+                    file_name=task.attachment_name or task.attachment_url.split("/")[-1],
+                    source="task",
+                ))
+                backfilled += 1
+        if backfilled:
+            await db.commit()
+
     yield
 
     await engine.dispose()
@@ -148,6 +177,7 @@ app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["aut
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["projects"])
 app.include_router(project_chat.router, prefix=f"{settings.API_V1_STR}/projects/chat", tags=["project-chat"])
+app.include_router(project_documents.router, prefix=f"{settings.API_V1_STR}/projects", tags=["project-documents"])
 app.include_router(tasks.router, prefix=f"{settings.API_V1_STR}/tasks", tags=["tasks"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(leave.router, prefix=f"{settings.API_V1_STR}/leave", tags=["leave"])

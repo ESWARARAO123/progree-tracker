@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { PartyPopper, X } from 'lucide-react';
 
@@ -14,6 +14,14 @@ export const CompanyHolidayModal: React.FC<Props> = ({ isOpen, onClose, date }) 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [holidayDate, setHolidayDate] = useState(date || new Date().toISOString().split('T')[0]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setDescription('');
+      setHolidayDate(date || new Date().toISOString().split('T')[0]);
+    }
+  }, [isOpen, date]);
 
   if (!isOpen) return null;
 
