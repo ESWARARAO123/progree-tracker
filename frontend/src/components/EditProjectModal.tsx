@@ -11,7 +11,7 @@ interface Props {
 }
 
 export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) => {
-  const { updateProject, users } = useApp();
+  const { updateProject, users, currentUser } = useApp();
   const assignableUsers = users.filter(u => u.isActive);
 
   const [name, setName] = useState(project.name);
@@ -33,16 +33,19 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    updateProject(project.id, {
+    const payload: any = {
       name,
       description,
       startDate,
       endDate: endDate || null,
       priority,
       status,
-      ownerId: ownerId || null,
-      assignedUserIds: assignedIds,
-    });
+    };
+    if (currentUser.role === 'ADMIN') {
+      payload.ownerId = ownerId || null;
+      payload.assignedUserIds = assignedIds;
+    }
+    updateProject(project.id, payload);
     onClose();
   };
 
@@ -86,19 +89,21 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Project Owner</label>
-            <select
-              value={ownerId}
-              onChange={e => setOwnerId(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
-            >
-              <option value="">No owner</option>
-              {assignableUsers.map(u => (
-                <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>
-              ))}
-            </select>
-          </div>
+          {currentUser.role === 'ADMIN' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Project Owner</label>
+              <select
+                value={ownerId}
+                onChange={e => setOwnerId(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+              >
+                <option value="">No owner</option>
+                {assignableUsers.map(u => (
+                  <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -153,6 +158,7 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
             </div>
           </div>
 
+          {currentUser.role === 'ADMIN' && (
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
               <div className="flex items-center space-x-1.5">
@@ -188,6 +194,7 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
               <p className="text-[10px] text-purple-400 mt-1">{assignedIds.length} user{assignedIds.length > 1 ? 's' : ''} assigned</p>
             )}
           </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-2">
             <button

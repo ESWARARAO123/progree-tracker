@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Uploads (user data)
+uploads/*
+!uploads/.gitkeep
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/

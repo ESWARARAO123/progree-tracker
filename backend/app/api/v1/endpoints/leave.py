@@ -1,4 +1,6 @@
-from datetime import date
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -115,6 +117,13 @@ async def apply_leave(
 ):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="End date cannot be before start date.")
+
+    tomorrow_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date() + timedelta(days=1)
+    if body.start_date < tomorrow_ist:
+        raise HTTPException(
+            status_code=400,
+            detail="Leave requests must start from tomorrow or later. Past and today's dates are not allowed.",
+        )
 
     request_type = body.request_type or "LEAVE"
     if request_type not in VALID_REQUEST_TYPES:

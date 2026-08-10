@@ -65,6 +65,7 @@ export interface Project {
   assignedUsers: User[];
   owner?: { id: string; fullName: string; email: string };
   overdueTasksCount: number;
+  createdAt?: string;
 }
 
 export interface ProjectRequest {

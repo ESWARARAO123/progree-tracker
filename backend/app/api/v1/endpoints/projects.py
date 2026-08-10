@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,6 +18,16 @@ from app.core.notify import get_admin_users, create_notification
 
 router = APIRouter()
 
+EDIT_WINDOW = timedelta(days=7)
+
+
+def _age_is_within(dt: datetime | None, window: timedelta) -> bool:
+    if dt is None:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - dt <= window
+
 
 def _serialize_project(p: Project, assigned_map: dict[str, list[AssignedUser]]) -> ProjectResponse:
     return ProjectResponse(
@@ -31,6 +42,7 @@ def _serialize_project(p: Project, assigned_map: dict[str, list[AssignedUser]]) 
         created_by=str(p.created_by) if p.created_by else None,
         owner=OwnerInfo(id=str(p.owner.id), full_name=p.owner.full_name, email=p.owner.email) if p.owner else None,
         assigned_users=assigned_map.get(str(p.id), []),
+        created_at=p.created_at,
     )
 
 
@@ -105,7 +117,7 @@ async def update_project(
     project_id: str,
     body: UpdateProjectRequest,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(require_admin),
+    user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(Project).where(Project.id == UUID(project_id)).options(selectinload(Project.owner))
@@ -113,6 +125,19 @@ async def update_project(
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    is_admin = user.role.name == "ADMIN"
+    if not is_admin:
+        if project.owner_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Only the project owner or an admin can update this project.",
+            )
+        if not _age_is_within(project.created_at, EDIT_WINDOW):
+            raise HTTPException(
+                status_code=403,
+                detail="Projects can only be updated by the owner within 7 days of creation. Contact an admin to edit older projects.",
+            )
 
     if body.name is not None:
         project.name = body.name
@@ -128,10 +153,10 @@ async def update_project(
         project.status = body.status
     if body.progress_percentage is not None:
         project.progress_percentage = body.progress_percentage
-    if body.owner_id is not None:
+    if is_admin and body.owner_id is not None:
         project.owner_id = UUID(body.owner_id) if body.owner_id else None
 
-    if body.assigned_user_ids is not None:
+    if is_admin and body.assigned_user_ids is not None:
         old_assignments = await db.execute(
             select(ProjectAssignment).where(ProjectAssignment.project_id == project.id)
         )

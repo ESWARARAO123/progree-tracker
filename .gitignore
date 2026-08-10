@@ -1,0 +1,15 @@
+# Dev tokens / secrets
+.admin_token
+.eswar_token
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp

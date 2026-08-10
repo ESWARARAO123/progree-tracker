@@ -4,7 +4,7 @@ import { Plus, CheckSquare, User, Calendar, Sun, ArrowUpDown, Edit3, Paperclip, 
 import { NewTaskModal } from '../components/NewTaskModal';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { UpdateTaskStatusModal } from '../components/UpdateTaskStatusModal';
-import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
+import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays, isWithinDays } from '../utils/date';
 import type { TaskStatus, Task } from '../types';
 
 const statusProgress: Record<TaskStatus, number> = {
@@ -262,7 +262,7 @@ export const TasksPage: React.FC = () => {
                         <button
                           onClick={() => setEditingTask(t)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition"
-                          title="Edit Task"
+                          title="Update Task"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
@@ -348,6 +348,16 @@ export const TasksPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center space-x-1.5">
+                    {isWithinDays(t.createdAt, 7) && (
+                      <button
+                        onClick={() => setEditingTask(t)}
+                        className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[10px] font-semibold flex items-center space-x-1 transition"
+                        title="Update Task Details"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Update</span>
+                      </button>
+                    )}
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                       t.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' :
                       t.priority === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
@@ -464,6 +474,9 @@ export const TasksPage: React.FC = () => {
       </div>
 
       <NewTaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      {editingTask && (
+        <EditTaskModal isOpen={!!editingTask} onClose={() => setEditingTask(null)} task={editingTask} />
+      )}
       <UpdateTaskStatusModal
         isOpen={!!statusProofTask}
         onClose={() => setStatusProofTask(null)}

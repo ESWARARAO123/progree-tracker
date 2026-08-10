@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { FileText, Home, Building2, Plane, X } from 'lucide-react';
+import { tomorrowIST } from '../utils/date';
 import type { RequestType } from '../types';
 
 const REQUEST_TYPE_OPTIONS: { value: RequestType; label: string; description: string; icon: React.ReactNode }[] = [
@@ -18,25 +19,34 @@ export const LeaveRequestModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const { applyLeave, leaveBalance } = useApp();
 
   const [requestType, setRequestType] = useState<RequestType>('LEAVE');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(tomorrowIST());
+  const [endDate, setEndDate] = useState(tomorrowIST());
   const [reason, setReason] = useState('');
 
   if (!isOpen) return null;
 
+  const minStartDate = tomorrowIST();
   const isLeave = requestType === 'LEAVE';
   const selectedOption = REQUEST_TYPE_OPTIONS.find(o => o.value === requestType);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) return;
-    applyLeave({
-      requestType,
-      startDate,
-      endDate,
-      reason
-    });
-    onClose();
+    if (startDate < minStartDate) {
+      alert('Requests must start from tomorrow (current day + 1) or later. Past and today\'s dates are not allowed.');
+      return;
+    }
+    try {
+      await applyLeave({
+        requestType,
+        startDate,
+        endDate,
+        reason
+      });
+      onClose();
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit request');
+    }
   };
 
   return (
@@ -100,6 +110,7 @@ export const LeaveRequestModal: React.FC<Props> = ({ isOpen, onClose }) => {
               <input
                 type="date"
                 required
+                min={minStartDate}
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-orange-500 focus:outline-none"
@@ -111,11 +122,17 @@ export const LeaveRequestModal: React.FC<Props> = ({ isOpen, onClose }) => {
               <input
                 type="date"
                 required
+                min={startDate}
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-orange-500 focus:outline-none"
               />
             </div>
+          </div>
+
+          <div className="flex items-center space-x-1.5 text-[10px] text-slate-400 bg-slate-800/60 border border-slate-700/80 rounded-xl px-3 py-2">
+            <FileText className="w-3.5 h-3.5 shrink-0 text-orange-400" />
+            <span>Requests apply from tomorrow (current day + 1) onwards. Past and today's dates are not allowed.</span>
           </div>
 
           <div>

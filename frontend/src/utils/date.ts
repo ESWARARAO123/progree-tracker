@@ -3,6 +3,23 @@ export function todayStr(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+export function todayIST(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
+export function tomorrowIST(): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
+export function isWithinDays(dateStr?: string, days: number = 7): boolean {
+  if (!dateStr) return false;
+  const t = new Date(dateStr).getTime();
+  if (isNaN(t)) return false;
+  return Date.now() - t <= days * 24 * 60 * 60 * 1000;
+}
+
 export function getDaysRemaining(dueDate: string): number {
   if (!dueDate) return 0;
   const today = new Date();

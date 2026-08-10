@@ -25,14 +25,17 @@ export const EditTaskModal: React.FC<Props> = ({ isOpen, onClose, task }) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    await updateTask(task.id, {
+    const payload: any = {
       title,
       description,
       priority,
       status,
-      assigned_to: assignedTo || null,
       due_date: dueDate || null,
-    });
+    };
+    if (currentUser.role === 'ADMIN') {
+      payload.assigned_to = assignedTo || null;
+    }
+    await updateTask(task.id, payload);
     onClose();
   };
 

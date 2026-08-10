@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,6 +15,16 @@ from app.schemas.task import TaskResponse, CreateTaskRequest, UpdateTaskStatusRe
 from app.api.v1.endpoints.auth import get_current_user
 
 router = APIRouter()
+
+EDIT_WINDOW = timedelta(days=7)
+
+
+def _age_is_within(dt: datetime | None, window: timedelta) -> bool:
+    if dt is None:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - dt <= window
 
 
 @router.get("/", response_model=list[TaskResponse])
@@ -226,8 +237,18 @@ async def update_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if user.role.name != "ADMIN":
-        raise HTTPException(status_code=403, detail="Only admins can edit tasks")
+    is_admin = user.role.name == "ADMIN"
+    if not is_admin:
+        if task.assigned_to != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Only the assigned user or an admin can edit this task.",
+            )
+        if not _age_is_within(task.created_at, EDIT_WINDOW):
+            raise HTTPException(
+                status_code=403,
+                detail="Tasks can only be updated by the assignee within 7 days of creation. Contact an admin to edit older tasks.",
+            )
 
     if body.title is not None:
         task.title = body.title
@@ -239,7 +260,7 @@ async def update_task(
         task.status = body.status
     if body.due_date is not None:
         task.due_date = body.due_date
-    if body.assigned_to is not None:
+    if is_admin and body.assigned_to is not None:
         task.assigned_to = UUID(body.assigned_to) if body.assigned_to else None
     if body.attachment_url is not None:
         task.attachment_url = body.attachment_url

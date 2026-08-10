@@ -6,6 +6,7 @@ import { EditProjectModal } from '../components/EditProjectModal';
 import { DeleteProjectModal } from '../components/DeleteProjectModal';
 import { ProjectChatModal } from '../components/ProjectChatModal';
 import { NewTaskModal } from '../components/NewTaskModal';
+import { isWithinDays } from '../utils/date';
 import type { Project } from '../types';
 
 export const ProjectsPage: React.FC = () => {
@@ -61,6 +62,7 @@ export const ProjectsPage: React.FC = () => {
     const isSelected = currentUser.currentProjectId === p.id;
     const isOwner = p.owner?.id === currentUser.id;
     const requested = alreadyRequested(p.id);
+    const canUpdateProject = isAdmin || (isOwner && isWithinDays(p.createdAt, 7));
 
     return (
       <div key={p.id} className={`glass-panel p-5 rounded-2xl border space-y-4 flex flex-col justify-between transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
@@ -130,7 +132,19 @@ export const ProjectsPage: React.FC = () => {
                 )}
               </div>
 
-              {/* 2. Create Task for This Project Button */}
+              {/* 2. Update Project Button (owner within 7 days, or admin) */}
+              {canUpdateProject && (
+                <button
+                  onClick={() => setEditingProject(p)}
+                  className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center space-x-1 transition"
+                  title="Update Project Details"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Update</span>
+                </button>
+              )}
+
+              {/* 3. Create Task for This Project Button */}
               {(isOwner || isAdmin) && (
                 <button
                   onClick={() => setTaskProject(p)}

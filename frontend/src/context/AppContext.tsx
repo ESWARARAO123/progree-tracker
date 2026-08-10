@@ -74,6 +74,7 @@ function mapProject(p: any): Project {
     assignedUsers: (p.assigned_users || p.assignedUsers || []).map(mapUser),
     owner: p.owner ? { id: p.owner.id, fullName: p.owner.full_name, email: p.owner.email } : undefined,
     overdueTasksCount: p.overdue_tasks_count ?? p.overdueTasksCount ?? 0,
+    createdAt: p.created_at || p.createdAt || '',
   };
 }
 

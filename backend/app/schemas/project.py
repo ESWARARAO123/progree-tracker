@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel
 
 
@@ -49,6 +49,7 @@ class ProjectResponse(BaseModel):
     created_by: str | None
     owner: OwnerInfo | None = None
     assigned_users: list[AssignedUser] = []
+    created_at: datetime | None = None
 
     class Config:
         from_attributes = True
