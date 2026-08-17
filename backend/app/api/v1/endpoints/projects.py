@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, delete, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,6 +12,7 @@ from app.models.project import Project
 from app.models.project_assignment import ProjectAssignment
 from app.models.project_request import ProjectRequest
 from app.models.task import Task
+from app.models.task_update import TaskUpdate
 from app.schemas.project import ProjectResponse, CreateProjectRequest, UpdateProjectRequest, AssignedUser, OwnerInfo
 from app.api.v1.endpoints.auth import get_current_user, require_admin
 from app.core.notify import get_admin_users, create_notification
@@ -127,13 +128,16 @@ async def update_project(
         raise HTTPException(status_code=404, detail="Project not found")
 
     is_admin = user.role.name == "ADMIN"
+    is_owner = project.owner_id == user.id
+    # Allow owner to update owner_status anytime; other fields only within 7 days
+    updating_owner_status = body.owner_status is not None and all(v is None for k, v in body.model_dump(exclude={'owner_status'}).items())
     if not is_admin:
-        if project.owner_id != user.id:
+        if not is_owner:
             raise HTTPException(
                 status_code=403,
                 detail="Only the project owner or an admin can update this project.",
             )
-        if not _age_is_within(project.created_at, EDIT_WINDOW):
+        if not updating_owner_status and not _age_is_within(project.created_at, EDIT_WINDOW):
             raise HTTPException(
                 status_code=403,
                 detail="Projects can only be updated by the owner within 7 days of creation. Contact an admin to edit older projects.",
@@ -153,6 +157,9 @@ async def update_project(
         project.status = body.status
     if body.progress_percentage is not None:
         project.progress_percentage = body.progress_percentage
+    if body.owner_status is not None:
+        project.owner_status = body.owner_status
+        project.owner_status_updated_at = datetime.utcnow()
     if is_admin and body.owner_id is not None:
         project.owner_id = UUID(body.owner_id) if body.owner_id else None
 
@@ -309,3 +316,96 @@ async def get_project(
 
     assigned_map = await _build_assigned_map(db, [project.id])
     return _serialize_project(project, assigned_map)
+
+
+@router.get("/{project_id}/updates", response_model=list[dict])
+async def get_project_updates(
+    project_id: str,
+    from_date: str = Query(..., alias="from"),
+    to_date: str = Query(..., alias="to"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get all updates for a project within a date range (owner/admin only)"""
+    result = await db.execute(
+        select(Project).where(Project.id == UUID(project_id)).options(selectinload(Project.owner))
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Check access - only owner or admin
+    is_admin = user.role.name == "ADMIN"
+    if not is_admin and project.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Only project owner or admin can view team updates")
+
+    # Get all assigned users for this project
+    assigned_result = await db.execute(
+        select(ProjectAssignment).where(ProjectAssignment.project_id == UUID(project_id))
+    )
+    assigned_user_ids = [str(a.user_id) for a in assigned_result.scalars().all()]
+
+    # Get updates from assigned users within date range
+    updates_result = await db.execute(
+        select(TaskUpdate)
+        .where(
+            TaskUpdate.user_id.in_([UUID(uid) for uid in assigned_user_ids]),
+            TaskUpdate.report_date >= from_date,
+            TaskUpdate.report_date <= to_date
+        )
+        .options(selectinload(TaskUpdate.user))
+        .order_by(TaskUpdate.report_date.desc())
+    )
+    updates = updates_result.scalars().all()
+
+    return [{
+        "id": str(u.id),
+        "userId": str(u.user_id),
+        "userName": u.user.full_name if u.user else "Unknown",
+        "userEmail": u.user.email if u.user else "",
+        "reportDate": u.report_date,
+        "morningPlannedWork": u.morning_planned_work,
+        "morningTaskTitle": u.morning_task_title,
+        "morningBlockers": u.morning_blockers,
+        "morningEstHours": u.morning_est_hours,
+        "morningSubmittedAt": u.morning_submitted_at.isoformat() if u.morning_submitted_at else None,
+        "eveningCompletedWork": u.evening_completed_work,
+        "eveningChallenges": u.evening_challenges,
+        "eveningNextDayPlan": u.evening_next_day_plan,
+        "eveningHoursSpent": u.evening_hours_spent,
+        "eveningSubmittedAt": u.evening_submitted_at.isoformat() if u.evening_submitted_at else None,
+    } for u in updates]
+
+
+@router.get("/{project_id}/members", response_model=list[dict])
+async def get_project_members(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get all members assigned to a project (owner/admin only)"""
+    result = await db.execute(
+        select(Project).where(Project.id == UUID(project_id)).options(selectinload(Project.owner))
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    is_admin = user.role.name == "ADMIN"
+    if not is_admin and project.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Only project owner or admin can view team members")
+
+    assigned_result = await db.execute(
+        select(ProjectAssignment)
+        .where(ProjectAssignment.project_id == UUID(project_id))
+        .options(selectinload(ProjectAssignment.user))
+    )
+    assignments = assigned_result.scalars().all()
+
+    return [{
+        "id": str(a.user.id),
+        "fullName": a.user.full_name,
+        "email": a.user.email,
+        "department": a.user.department,
+        "designation": a.user.designation,
+    } for a in assignments if a.user]

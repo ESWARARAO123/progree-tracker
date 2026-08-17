@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Paperclip, FileText, Image as ImageIcon, Download, MessageSquare, Loader2 } from 'lucide-react';
+import { X, Send, Paperclip, FileText, Image as ImageIcon, Download, MessageSquare, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
 import type { Project, ProjectChatMessage } from '../types';
@@ -10,6 +10,8 @@ interface ProjectChatModalProps {
   project: Project | null;
 }
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
 export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({ isOpen, onClose, project }) => {
   const { token, user } = useAuth();
   const [messages, setMessages] = useState<ProjectChatMessage[]>([]);
@@ -17,6 +19,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({ isOpen, onCl
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -229,10 +232,19 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({ isOpen, onCl
             <div className="flex items-center space-x-2 truncate">
               {isImageFile(selectedFile.name) ? <ImageIcon className="w-4 h-4 text-emerald-400" /> : <FileText className="w-4 h-4 text-blue-400" />}
               <span className="truncate font-medium">{selectedFile.name}</span>
-              <span className="text-[10px] text-slate-500">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+              <span className="text-[10px] text-slate-500">({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)</span>
             </div>
-            <button onClick={() => setSelectedFile(null)} className="text-slate-400 hover:text-rose-400 p-1">
+            <button onClick={() => { setSelectedFile(null); setFileError(null); }} className="text-slate-400 hover:text-rose-400 p-1">
               <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {fileError && (
+          <div className="px-6 py-2 bg-rose-500/10 border-t border-rose-500/30 flex items-center justify-between text-xs text-rose-300">
+            <AlertTriangle className="w-4 h-4 shrink-0 mr-2" />
+            <span>{fileError}</span>
+            <button onClick={() => setFileError(null)} className="text-rose-400 hover:text-rose-300 p-1">
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
@@ -244,7 +256,15 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({ isOpen, onCl
             ref={fileInputRef}
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
-                setSelectedFile(e.target.files[0]);
+                const file = e.target.files[0];
+                if (file.size > MAX_FILE_SIZE) {
+                  setFileError(`File size exceeds 50MB limit. Current: ${(file.size / (1024 * 1024)).toFixed(1)}MB`);
+                  setSelectedFile(null);
+                  e.target.value = '';
+                  return;
+                }
+                setFileError(null);
+                setSelectedFile(file);
               }
             }}
             className="hidden"

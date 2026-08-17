@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from sqlalchemy import Column, String, Text, Date, Numeric, DateTime, Enum as SAEnum, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -22,6 +23,8 @@ class Project(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    owner_status = Column(Text, nullable=True)
+    owner_status_updated_at = Column(DateTime(timezone=True), nullable=True)
 
     owner = relationship("User", foreign_keys=[owner_id], lazy="joined")
     creator = relationship("User", foreign_keys=[created_by], lazy="joined")

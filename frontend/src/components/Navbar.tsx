@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Clock, Lock, Zap, LogOut, Check, CheckCheck, ChevronDown, KeyRound } from 'lucide-react';
+import { Bell, Clock, Lock, Zap, LogOut, Check, CheckCheck, ChevronDown, KeyRound, Mail } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
 export const Navbar: React.FC = () => {
@@ -159,6 +159,14 @@ export const Navbar: React.FC = () => {
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Sign Out</span>
+                </button>
+
+                <button
+                  onClick={() => window.open('mailto:eswar@sierraedge.ai?subject=Sierra%20Team%20Hub%20Feedback&body=Hello%20Eswar,%0A%0AI%20have%20a%20suggestion%20regarding%20Sierra%20Team%20Hub%3A%0A%0A')}
+                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-emerald-400 hover:bg-emerald-500/10 transition"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Send Feedback / Suggestion</span>
                 </button>
               </div>
             )}

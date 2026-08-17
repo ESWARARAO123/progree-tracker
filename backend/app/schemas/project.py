@@ -35,6 +35,7 @@ class UpdateProjectRequest(BaseModel):
     progress_percentage: float | None = None
     owner_id: str | None = None
     assigned_user_ids: list[str] | None = None
+    owner_status: str | None = None
 
 
 class ProjectResponse(BaseModel):
@@ -50,6 +51,8 @@ class ProjectResponse(BaseModel):
     owner: OwnerInfo | None = None
     assigned_users: list[AssignedUser] = []
     created_at: datetime | None = None
+    owner_status: str | None = None
+    owner_status_updated_at: datetime | None = None
 
     class Config:
         from_attributes = True

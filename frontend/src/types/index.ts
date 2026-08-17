@@ -66,6 +66,8 @@ export interface Project {
   owner?: { id: string; fullName: string; email: string };
   overdueTasksCount: number;
   createdAt?: string;
+  ownerStatus?: string;
+  ownerStatusUpdatedAt?: string;
 }
 
 export interface ProjectRequest {

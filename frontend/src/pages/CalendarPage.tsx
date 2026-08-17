@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Calendar as CalendarIcon, CalendarDays, PartyPopper, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, CalendarDays, PartyPopper, X, ChevronLeft, ChevronRight, FileCheck } from 'lucide-react';
 import { PlanMeetingModal } from '../components/PlanMeetingModal';
 import { CompanyHolidayModal } from '../components/CompanyHolidayModal';
 import { MeetingDetailModal } from '../components/MeetingDetailModal';
+import { DayUpdatesModal } from '../components/DayUpdatesModal';
 import { todayStr } from '../utils/date';
 import type { Meeting } from '../types';
 
 export const CalendarPage: React.FC = () => {
-  const { updates, leaveRequests, meetings, holidays, currentUser, loading, deleteCompanyHoliday } = useApp();
+  const { updates, leaveRequests, meetings, holidays, users, currentUser, loading, deleteCompanyHoliday } = useApp();
 
   const [viewDate, setViewDate] = useState(() => new Date());
   const year = viewDate.getFullYear();
@@ -20,6 +21,7 @@ export const CalendarPage: React.FC = () => {
   const [isHolidayOpen, setIsHolidayOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [updatesDate, setUpdatesDate] = useState<string | null>(null);
 
   const goToPrevMonth = () => {
     setSelectedDay(null);
@@ -202,7 +204,8 @@ export const CalendarPage: React.FC = () => {
 
           {daysArray.map(day => {
             const status = getDayStatus(day);
-            const canPlan = currentUser.role === 'ADMIN';
+            const isAdmin = currentUser.role === 'ADMIN';
+            const isPastDate = dateStrFor(day) < today;
             const isSelected = selectedDay === day;
             const hasMeetings = status.dayMeetings.length > 0;
 
@@ -219,8 +222,8 @@ export const CalendarPage: React.FC = () => {
             return (
               <div
                 key={day}
-                className={`relative min-h-[90px] p-2 rounded-xl border flex flex-col justify-between transition ${baseStyle} ${canPlan ? 'cursor-pointer hover:border-indigo-500/50' : ''}`}
-                onClick={() => canPlan && setSelectedDay(isSelected ? null : day)}
+                className={`relative min-h-[90px] p-2 rounded-xl border flex flex-col justify-between transition ${baseStyle} ${isPastDate || isAdmin ? 'cursor-pointer hover:border-indigo-500/50' : ''}`}
+                onClick={() => (isPastDate || isAdmin) && setSelectedDay(isSelected ? null : day)}
               >
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-xs">{day}</span>
@@ -239,7 +242,7 @@ export const CalendarPage: React.FC = () => {
                   {status.holiday && (
                     <span className="flex items-center space-x-1 text-[9px] font-bold bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded block truncate">
                       <span className="truncate">🎉 {status.holiday.name}</span>
-                      {currentUser.role === 'ADMIN' && (
+                      {isAdmin && (
                         <button
                           onClick={e => {
                             e.stopPropagation();
@@ -309,23 +312,41 @@ export const CalendarPage: React.FC = () => {
                   {!status.isWeekend && !status.holiday && 'Working Day'}
                 </div>
 
-                {canPlan && isSelected && (
+                {isSelected && (
                   <div className="absolute inset-x-1.5 top-9 z-10 bg-slate-800 border border-indigo-500/40 rounded-xl shadow-2xl p-2 space-y-1.5">
                     <div className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider px-1">{dateStrFor(day)}</div>
-                    <button
-                      onClick={e => { e.stopPropagation(); setIsMeetingOpen(true); }}
-                      className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition"
-                    >
-                      <CalendarDays className="w-3 h-3" />
-                      <span>Plan Meeting</span>
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); setIsHolidayOpen(true); }}
-                      className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-semibold transition"
-                    >
-                      <PartyPopper className="w-3 h-3" />
-                      <span>Add Company Holiday</span>
-                    </button>
+                    {isPastDate ? (
+                      <>
+                        <button
+                          onClick={e => { e.stopPropagation(); setUpdatesDate(dateStrFor(day)); setSelectedDay(null); }}
+                          className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-semibold transition"
+                        >
+                          <FileCheck className="w-3 h-3" />
+                          <span>{isAdmin ? 'See Updates' : 'See My Update'}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {isAdmin && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setIsMeetingOpen(true); }}
+                            className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition"
+                          >
+                            <CalendarDays className="w-3 h-3" />
+                            <span>Plan Meeting</span>
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setIsHolidayOpen(true); }}
+                            className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-semibold transition"
+                          >
+                            <PartyPopper className="w-3 h-3" />
+                            <span>Add Company Holiday</span>
+                          </button>
+                        )}
+                      </>
+                    )}
                     <button
                       onClick={e => { e.stopPropagation(); setSelectedDay(null); }}
                       className="w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] font-semibold transition"
@@ -361,6 +382,14 @@ export const CalendarPage: React.FC = () => {
         isOpen={isHolidayOpen}
         onClose={() => { setIsHolidayOpen(false); setSelectedDay(null); }}
         date={selectedDay !== null ? dateStrFor(selectedDay) : today}
+      />
+      <DayUpdatesModal
+        isOpen={updatesDate !== null}
+        onClose={() => setUpdatesDate(null)}
+        date={updatesDate || today}
+        users={users}
+        updates={updates}
+        currentUser={currentUser}
       />
     </div>
   );

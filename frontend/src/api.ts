@@ -107,6 +107,16 @@ export async function getProject(token: string, projectId: string) {
   return handleResponse(res);
 }
 
+export async function getProjectUpdates(token: string, projectId: string, from: string, to: string) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/updates?from=${from}&to=${to}`, { headers: authHeaders(token) });
+  return handleResponse(res);
+}
+
+export async function getProjectMembers(token: string, projectId: string) {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/members`, { headers: authHeaders(token) });
+  return handleResponse(res);
+}
+
 export async function updateProject(token: string, projectId: string, data: any) {
   const res = await fetch(`${API_BASE}/projects/${projectId}`, {
     method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
@@ -185,6 +195,16 @@ export async function updateTask(token: string, taskId: string, data: any) {
     method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
   });
   return handleResponse(res);
+}
+
+export async function deleteTask(token: string, taskId: string) {
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: 'DELETE', headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Delete failed' }));
+    throw new Error(err.detail || 'Delete failed');
+  }
 }
 
 // Project Chat
@@ -353,6 +373,16 @@ export async function reviewLeaveRequest(token: string, leaveId: string, data: a
     method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
   });
   return handleResponse(res);
+}
+
+export async function deleteLeaveRequest(token: string, leaveId: string) {
+  const res = await fetch(`${API_BASE}/leave/${leaveId}`, {
+    method: 'DELETE', headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Failed to delete leave request' }));
+    throw new Error(err.detail || 'Failed to delete leave request');
+  }
 }
 
 export async function getAdminTodayLeave(token: string) {

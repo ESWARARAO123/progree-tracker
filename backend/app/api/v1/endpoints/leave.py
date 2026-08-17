@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -284,6 +284,24 @@ async def apply_leave(
         created_at=r.created_at,
         updated_at=r.updated_at,
     )
+
+
+@router.delete("/{leave_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_leave_request(
+    leave_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    result = await db.execute(
+        select(LeaveRequest).where(LeaveRequest.id == leave_id)
+    )
+    leave = result.scalar_one_or_none()
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    await db.delete(leave)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/{leave_id}/review", response_model=LeaveRequestResponse)

@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.project import Project
 from app.models.project_chat import ProjectChat
 from app.models.project_document import ProjectDocument
+from app.models.project_assignment import ProjectAssignment
 from app.api.v1.endpoints.auth import get_current_user
 import os, uuid
 
@@ -19,6 +20,24 @@ router = APIRouter()
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+async def _ensure_access(db: AsyncSession, project: Project, user: User) -> None:
+    if user.role.name == "ADMIN":
+        return
+    if project.owner_id == user.id:
+        return
+    assign_check = await db.execute(
+        select(ProjectAssignment).where(
+            ProjectAssignment.project_id == project.id,
+            ProjectAssignment.user_id == user.id,
+        )
+    )
+    if not assign_check.scalar_one_or_none():
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this project's chat.",
+        )
 
 
 class CreateChatMessageRequest(BaseModel):
@@ -51,6 +70,8 @@ async def list_project_messages(
     project = proj_res.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    await _ensure_access(db, project, user)
 
     query = (
         select(ProjectChat)
@@ -89,6 +110,8 @@ async def post_project_message(
     project = proj_res.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    await _ensure_access(db, project, user)
 
     chat_msg = ProjectChat(
         project_id=UUID(project_id),
@@ -132,6 +155,8 @@ async def upload_chat_file(
     project = proj_res.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    await _ensure_access(db, project, user)
 
     ext = os.path.splitext(file.filename)[1] if file.filename else ""
     unique_name = f"{uuid.uuid4().hex}{ext}"

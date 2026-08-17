@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { FileText, Plus, CheckCircle, XCircle, Clock, Home, Building2, Plane, Users, CalendarDays, Loader2, UserCircle2 } from 'lucide-react';
+import { FileText, Plus, CheckCircle, XCircle, Clock, Home, Building2, Plane, Users, CalendarDays, Loader2, UserCircle2, Trash2 } from 'lucide-react';
 import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { LeaveUsersModal } from '../components/LeaveUsersModal';
 import * as api from '../api';
@@ -43,7 +43,7 @@ function mapLeave(l: any): LeaveRequest {
 }
 
 export const LeavePage: React.FC = () => {
-  const { leaveRequests, leaveBalance, currentUser, reviewLeaveRequest, loading } = useApp();
+  const { leaveRequests, leaveBalance, currentUser, reviewLeaveRequest, deleteLeaveRequest, loading } = useApp();
   const { token } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
@@ -268,24 +268,38 @@ export const LeavePage: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-4 text-right">
-                          {req.status === 'PENDING' ? (
-                            <div className="flex justify-end space-x-2">
-                              <button
-                                onClick={async () => { await reviewLeaveRequest(req.id, 'APPROVED', 'Approved by Admin'); fetchToday(); }}
-                                className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[10px] transition"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={async () => { await reviewLeaveRequest(req.id, 'REJECTED', 'Capacity constraint'); fetchToday(); }}
-                                className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[10px] transition"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-slate-500">Processed</span>
-                          )}
+                          <div className="flex justify-end space-x-2">
+                            {req.status === 'PENDING' ? (
+                              <>
+                                <button
+                                  onClick={async () => { await reviewLeaveRequest(req.id, 'APPROVED', 'Approved by Admin'); fetchToday(); }}
+                                  className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[10px] transition"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={async () => { await reviewLeaveRequest(req.id, 'REJECTED', 'Capacity constraint'); fetchToday(); }}
+                                  className="px-2.5 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[10px] transition"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[10px] text-slate-500">Processed</span>
+                            )}
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`Delete leave request for ${req.userName}?`)) {
+                                  await deleteLeaveRequest(req.id);
+                                  fetchToday();
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                              title="Delete leave request"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

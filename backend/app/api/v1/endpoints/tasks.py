@@ -201,6 +201,33 @@ async def create_task(
     )
 
 
+@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Task).where(Task.id == UUID(task_id)).options(
+            selectinload(Task.project), selectinload(Task.assignee), selectinload(Task.creator)
+        )
+    )
+    task = result.scalar_one_or_none()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    is_admin = user.role.name == "ADMIN"
+    if not is_admin:
+        if task.assigned_to != user.id:
+            raise HTTPException(status_code=403, detail="Only the assigned user or an admin can delete this task.")
+        if not _age_is_within(task.created_at, EDIT_WINDOW):
+            raise HTTPException(status_code=403, detail="Tasks can only be deleted by the assignee within 7 days of creation. Contact an admin to delete older tasks.")
+
+    await db.delete(task)
+    await db.commit()
+    return None
+
+
 @router.patch("/{task_id}/status", response_model=TaskResponse)
 async def update_task_status(
     task_id: str,

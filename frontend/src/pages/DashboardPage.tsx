@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
-import { Users, CheckCircle2, AlertTriangle, Briefcase, FileCheck, Sun, Moon, ArrowUpRight, TrendingUp, CalendarClock, Clock, ListTodo, CalendarDays, FileSpreadsheet, Presentation, Download, ChevronDown } from 'lucide-react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
+import { Users, CheckCircle2, AlertTriangle, Briefcase, FileCheck, Sun, Moon, ArrowUpRight, CalendarClock, Clock, ListTodo, CalendarDays, FileSpreadsheet, Presentation, Download, ChevronDown, Calendar, CheckCircle } from 'lucide-react';
+import { ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar, Cell } from 'recharts';
 import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
 import { ProjectJoinBanner } from '../components/ProjectJoinBanner';
+import { AdminUpdateStatusModal } from '../components/AdminUpdateStatusModal';
 
 interface Props {
   openMorningModal: () => void;
@@ -18,6 +19,21 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
   const [exporting, setExporting] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [statusModalKind, setStatusModalKind] = useState<'submitted' | 'pending'>('submitted');
+  const [statusModalType, setStatusModalType] = useState<'morning' | 'evening'>('morning');
+
+  const openStatusModal = (type: 'morning' | 'evening', kind: 'submitted' | 'pending') => {
+    setStatusModalType(type);
+    setStatusModalKind(kind);
+    setIsStatusModalOpen(true);
+  };
+
+  const closeStatusModal = () => {
+    setIsStatusModalOpen(false);
+    setStatusModalKind('submitted');
+    setStatusModalType('morning');
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -91,18 +107,11 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
     : null;
 
   if (currentUser.role === 'ADMIN') {
-    const totalEmployees = users.length;
-    const morningSubmittedCount = updates.filter(u => u.reportDate === today && u.morningSubmittedAt).length;
-    const eveningSubmittedCount = updates.filter(u => u.reportDate === today && u.eveningSubmittedAt).length;
+    const nonAdminUsers = users.filter(u => u.role !== 'ADMIN');
+    const totalEmployees = nonAdminUsers.length;
+    const morningSubmittedCount = updates.filter(u => u.reportDate === today && u.morningSubmittedAt && nonAdminUsers.some(emp => emp.id === u.userId)).length;
+    const eveningSubmittedCount = updates.filter(u => u.reportDate === today && u.eveningSubmittedAt && nonAdminUsers.some(emp => emp.id === u.userId)).length;
     const pendingUpdateCount = totalEmployees - morningSubmittedCount;
-
-    const productivityData = [
-      { day: 'Mon', score: 85, hours: 38 },
-      { day: 'Tue', score: 92, hours: 42 },
-      { day: 'Wed', score: 88, hours: 40 },
-      { day: 'Thu', score: 95, hours: 44 },
-      { day: 'Fri', score: 90, hours: 39 },
-    ];
 
     const taskCompletionData = [
       { name: 'Completed', count: tasks.filter(t => t.status === 'COMPLETED').length, color: '#10b981' },
@@ -110,6 +119,17 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
       { name: 'Blocked', count: tasks.filter(t => t.status === 'BLOCKED').length, color: '#ef4444' },
       { name: 'Not Started', count: tasks.filter(t => t.status === 'NOT_STARTED').length, color: '#64748b' },
     ];
+
+    const todayUpdates = updates.filter(u => u.reportDate === today);
+    const submittedUsers = nonAdminUsers
+      .filter(emp => todayUpdates.some(tu => tu.userId === emp.id && (tu.morningSubmittedAt || tu.eveningSubmittedAt)))
+      .sort((a, b) => {
+        const timeA = todayUpdates.find(tu => tu.userId === a.id)?.morningSubmittedAt || todayUpdates.find(tu => tu.userId === a.id)?.eveningSubmittedAt || '9999-99-99';
+        const timeB = todayUpdates.find(tu => tu.userId === b.id)?.morningSubmittedAt || todayUpdates.find(tu => tu.userId === b.id)?.eveningSubmittedAt || '9999-99-99';
+        return (timeA as string).localeCompare(timeB as string);
+      });
+    const notSubmittedUsers = nonAdminUsers.filter(emp => !todayUpdates.some(tu => tu.userId === emp.id && (tu.morningSubmittedAt || tu.eveningSubmittedAt)));
+    const summaryUsers = [...submittedUsers, ...notSubmittedUsers];
 
     return (
       <div className="space-y-6 pb-8">
@@ -151,7 +171,17 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
               <Sun className="w-4 h-4 text-amber-400" />
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-bold text-amber-300">{morningSubmittedCount} / {totalEmployees}</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl font-bold text-amber-300">{morningSubmittedCount} / {totalEmployees}</span>
+                <button
+                  type="button"
+                  onClick={() => openStatusModal('morning', 'submitted')}
+                  className="p-1 rounded-lg text-amber-300/80 hover:text-amber-200 hover:bg-amber-500/10 transition"
+                  title="View employees who submitted morning updates"
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
+              </div>
               <span className="text-[10px] text-slate-400 font-medium">Today</span>
             </div>
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -165,7 +195,17 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
               <Moon className="w-4 h-4 text-blue-400" />
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-bold text-blue-300">{eveningSubmittedCount} / {totalEmployees}</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl font-bold text-blue-300">{eveningSubmittedCount} / {totalEmployees}</span>
+                <button
+                  type="button"
+                  onClick={() => openStatusModal('evening', 'submitted')}
+                  className="p-1 rounded-lg text-blue-300/80 hover:text-blue-200 hover:bg-blue-500/10 transition"
+                  title="View employees who submitted evening updates"
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
+              </div>
               <span className="text-[10px] text-slate-400 font-medium">Locks 10 PM</span>
             </div>
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -179,7 +219,17 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
               <AlertTriangle className="w-4 h-4 text-rose-400" />
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-bold text-rose-400">{pendingUpdateCount}</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-2xl font-bold text-rose-400">{pendingUpdateCount}</span>
+                <button
+                  type="button"
+                  onClick={() => openStatusModal('morning', 'pending')}
+                  className="p-1 rounded-lg text-rose-300/80 hover:text-rose-200 hover:bg-rose-500/10 transition"
+                  title="View employees who have not submitted yet"
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
+              </div>
               <span className="text-[10px] text-rose-400 font-medium bg-rose-500/10 px-1.5 py-0.5 rounded">
                 Auto Email @10PM
               </span>
@@ -188,43 +238,169 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-sm text-white flex items-center space-x-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  <span>Weekly Productivity & Time Log Index</span>
-                </h3>
-                <p className="text-xs text-slate-400">Average team output score vs logged hours</p>
-              </div>
-              <span className="text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                +14% vs Last Week
-              </span>
+        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center space-x-2">
+                <Calendar className="w-5 h-5 text-blue-400" />
+                <span>Today's Daily Updates Summary</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Complete view of all employees' morning and evening update status for {today}
+              </p>
             </div>
-
-            <div className="h-60 w-full pt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={productivityData}>
-                  <defs>
-                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="day" stroke="#64748b" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                  />
-                  <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorScore)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {submittedUsers.length} Submitted
+              </span>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                {notSubmittedUsers.length} Pending
+              </span>
             </div>
           </div>
 
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-            <div>
+          <div className="overflow-x-auto max-h-[520px] overflow-y-auto rounded-xl border border-slate-800">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 z-10 bg-slate-900/95 text-slate-400 font-semibold border-b border-slate-800 uppercase text-[10px] tracking-wider backdrop-blur">
+                <tr>
+                  <th className="p-3">Employee</th>
+                  <th className="p-3">Morning Update</th>
+                  <th className="p-3">Morning Time</th>
+                  <th className="p-3">Evening Update</th>
+                  <th className="p-3">Evening Time</th>
+                  <th className="p-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-slate-300">
+                {summaryUsers.map(emp => {
+                  const update = updates.find(u => u.userId === emp.id && u.reportDate === today);
+                  const hasMorning = update?.morningSubmittedAt;
+                  const hasEvening = update?.eveningSubmittedAt;
+
+                  return (
+                    <tr key={emp.id} className="hover:bg-slate-800/40 transition">
+                      <td className="p-3">
+                        <div className="font-semibold text-white">{emp.fullName}</div>
+                        <div className="text-[10px] text-slate-500">{emp.email}</div>
+                        <div className="text-[10px] text-slate-600">{emp.department} • {emp.designation}</div>
+                      </td>
+                      <td className="p-3 max-w-xs">
+                        {hasMorning ? (
+                          <div className="space-y-1">
+                            <p className="text-slate-200 line-clamp-2">{update.morningPlannedWork || '—'}</p>
+                            {update.morningTaskTitle && (
+                              <div className="text-[10px] text-emerald-400 font-medium">Task: {update.morningTaskTitle}</div>
+                            )}
+                            {update.morningBlockers && (
+                              <div className="text-[10px] text-rose-400 font-semibold">Blocker: {update.morningBlockers}</div>
+                            )}
+                            {update.morningEstHours && (
+                              <div className="text-[9px] text-slate-500">Est. Hours: {update.morningEstHours} hrs</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 italic">Not submitted</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {hasMorning ? (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <Sun className="w-3 h-3" />
+                            <span>{new Date(update.morningSubmittedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 italic text-[11px]">—</span>
+                        )}
+                      </td>
+                      <td className="p-3 max-w-xs">
+                        {hasEvening ? (
+                          <div className="space-y-1">
+                            <p className="text-slate-200 line-clamp-2">{update.eveningCompletedWork || '—'}</p>
+                            {update.eveningChallenges && (
+                              <div className="text-[10px] text-amber-400">Challenges: {update.eveningChallenges}</div>
+                            )}
+                            {update.eveningNextDayPlan && (
+                              <div className="text-[10px] text-blue-400">Next: {update.eveningNextDayPlan}</div>
+                            )}
+                            {update.eveningHoursSpent && (
+                              <div className="text-[9px] text-slate-500">Hours: {update.eveningHoursSpent} hrs</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 italic">Pending</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {hasEvening ? (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            <Moon className="w-3 h-3" />
+                            <span>{new Date(update.eveningSubmittedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 italic text-[11px]">—</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {hasMorning && hasEvening ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            <CheckCircle className="w-3 h-3 inline mr-1" /> COMPLETE
+                          </span>
+                        ) : hasMorning ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            MORNING ONLY
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                            NO UPDATE
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 items-stretch">
+          <div className="glass-panel p-4 rounded-2xl border border-slate-800 space-y-3 flex flex-col h-full">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-sm text-white flex items-center space-x-2">
+                <Briefcase className="w-4 h-4 text-purple-400" />
+                <span>Active Projects Overview</span>
+              </h3>
+              <span className="text-xs text-slate-400">{projects.length} Total Projects</span>
+            </div>
+
+            <div className="flex-1 min-h-[260px] max-h-[300px] overflow-y-auto pr-1 space-y-2">
+              {projects.map(p => (
+                <div key={p.id} className="p-2.5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-1.5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-semibold text-xs text-white">{p.name}</div>
+                      <div className="text-[10px] text-slate-400">{p.description}</div>
+                    </div>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      {p.status}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-slate-400">
+                      <span>Completion</span>
+                      <span className="font-semibold text-white">{p.progressPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full" style={{ width: `${p.progressPercentage}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3 flex flex-col h-full">
+            <div className="space-y-1">
               <h3 className="font-bold text-sm text-white flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4 text-blue-400" />
                 <span>Task Status Distribution</span>
@@ -232,7 +408,7 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
               <p className="text-xs text-slate-400">Breakdown of assigned company tasks</p>
             </div>
 
-            <div className="h-60 w-full pt-2">
+            <div className="flex-1 min-h-[280px] w-full pt-1">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={taskCompletionData} layout="vertical">
                   <XAxis type="number" stroke="#64748b" fontSize={11} hide />
@@ -248,167 +424,6 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-white flex items-center space-x-2">
-                <Briefcase className="w-4 h-4 text-purple-400" />
-                <span>Active Projects Overview</span>
-              </h3>
-              <span className="text-xs text-slate-400">{projects.length} Total Projects</span>
-            </div>
-
-            <div className="space-y-3">
-              {projects.map(p => (
-                <div key={p.id} className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-semibold text-xs text-white">{p.name}</div>
-                      <div className="text-[10px] text-slate-400">{p.description}</div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                      {p.status}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-slate-400">
-                      <span>Completion</span>
-                      <span className="font-semibold text-white">{p.progressPercentage}%</span>
-                    </div>
-                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full" style={{ width: `${p.progressPercentage}%` }} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* FCFS Admin Updates Table */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-              <div>
-                <h3 className="font-bold text-base text-white flex items-center space-x-2">
-                  <FileCheck className="w-5 h-5 text-emerald-400" />
-                  <span>First-Come First-Serve (FCFS) Live Updates Table ({today})</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Real-time daily morning plans & evening status sorted by submission sequence.</p>
-              </div>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {updates.filter(u => u.reportDate === today).length} Submissions Today
-              </span>
-            </div>
-
-            {(() => {
-              const todayUpdates = updates.filter(u => u.reportDate === today);
-              // Sort FCFS (First Come First Serve): earliest morning submission time first
-              const fcfsOrdered = [...todayUpdates].sort((a, b) => {
-                const timeA = a.morningSubmittedAt || a.eveningSubmittedAt || '9999-99-99';
-                const timeB = b.morningSubmittedAt || b.eveningSubmittedAt || '9999-99-99';
-                return timeA.localeCompare(timeB);
-              });
-
-              return (
-                <div className="overflow-x-auto rounded-xl border border-slate-800">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 uppercase text-[10px] tracking-wider">
-                      <tr>
-                        <th className="p-3">FCFS Queue</th>
-                        <th className="p-3">Employee</th>
-                        <th className="p-3">Morning Task Update</th>
-                        <th className="p-3">Est. Hrs</th>
-                        <th className="p-3">Evening Status</th>
-                        <th className="p-3">Actual Hrs</th>
-                        <th className="p-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800 text-slate-300">
-                      {fcfsOrdered.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="p-8 text-center text-slate-500">
-                            No updates submitted yet today.
-                          </td>
-                        </tr>
-                      ) : (
-                        fcfsOrdered.map((u, index) => (
-                          <tr key={u.id} className="hover:bg-slate-800/40 transition">
-                            <td className="p-3">
-                              <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                                <span>#{index + 1} FCFS</span>
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <div className="font-semibold text-white">{u.userName}</div>
-                              <div className="text-[10px] text-slate-400">{u.userEmail}</div>
-                            </td>
-                            <td className="p-3 max-w-xs">
-                              {u.morningPlannedWork ? (
-                                <div className="space-y-1">
-                                  <p className="text-slate-200">{u.morningPlannedWork}</p>
-                                  {u.morningTaskTitle && (
-                                    <div className="text-[10px] text-emerald-400 font-medium">Task: {u.morningTaskTitle}</div>
-                                  )}
-                                  {u.morningBlockers && (
-                                    <div className="text-[10px] text-rose-400 font-semibold">Blocker: {u.morningBlockers}</div>
-                                  )}
-                                  <div className="text-[9px] text-slate-500">
-                                    Submitted: {u.morningSubmittedAt ? new Date(u.morningSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-slate-600 italic">Not submitted</span>
-                              )}
-                            </td>
-                            <td className="p-3 font-semibold text-white">
-                              {u.morningEstHours ? `${u.morningEstHours} hrs` : '—'}
-                            </td>
-                            <td className="p-3 max-w-xs">
-                              {u.eveningCompletedWork ? (
-                                <div className="space-y-1">
-                                  <p className="text-slate-200">{u.eveningCompletedWork}</p>
-                                  {u.eveningChallenges && (
-                                    <div className="text-[10px] text-amber-400">Challenges: {u.eveningChallenges}</div>
-                                  )}
-                                  {u.eveningNextDayPlan && (
-                                    <div className="text-[10px] text-blue-400">Next: {u.eveningNextDayPlan}</div>
-                                  )}
-                                  <div className="text-[9px] text-slate-500">
-                                    Submitted: {u.eveningSubmittedAt ? new Date(u.eveningSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-slate-600 italic">Pending evening</span>
-                              )}
-                            </td>
-                            <td className="p-3 font-semibold text-white">
-                              {u.eveningHoursSpent ? `${u.eveningHoursSpent} hrs` : '—'}
-                            </td>
-                            <td className="p-3">
-                              {u.morningSubmittedAt && u.eveningSubmittedAt ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                  COMPLETE
-                                </span>
-                              ) : u.morningSubmittedAt ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                  MORNING ONLY
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
-                                  PENDING
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })()}
           </div>
         </div>
       </div>
@@ -666,6 +681,154 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
         </div>
       </div>
 
+      {/* Team Daily Updates Summary */}
+      <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h3 className="font-bold text-base text-white flex items-center space-x-2">
+              <Calendar className="w-5 h-5 text-blue-400" />
+              <span>Today's Team Daily Updates</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Morning and evening update status of all team members for {today}
+            </p>
+          </div>
+          {(() => {
+            const nonAdmin = users.filter(u => u.role !== 'ADMIN');
+            const subCount = nonAdmin.filter(emp => updates.some(u => u.userId === emp.id && u.reportDate === today && (u.morningSubmittedAt || u.eveningSubmittedAt))).length;
+            return (
+              <div className="flex items-center space-x-2">
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {subCount} Submitted
+                </span>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  {nonAdmin.length - subCount} Pending
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+
+        {(() => {
+          const nonAdminUsers = users.filter(u => u.role !== 'ADMIN');
+          const todayUpdates = updates.filter(u => u.reportDate === today);
+          const submittedUsers = nonAdminUsers
+            .filter(emp => todayUpdates.some(tu => tu.userId === emp.id && (tu.morningSubmittedAt || tu.eveningSubmittedAt)))
+            .sort((a, b) => {
+              const timeA = todayUpdates.find(tu => tu.userId === a.id)?.morningSubmittedAt || todayUpdates.find(tu => tu.userId === a.id)?.eveningSubmittedAt || '9999-99-99';
+              const timeB = todayUpdates.find(tu => tu.userId === b.id)?.morningSubmittedAt || todayUpdates.find(tu => tu.userId === b.id)?.eveningSubmittedAt || '9999-99-99';
+              return (timeA as string).localeCompare(timeB as string);
+            });
+          const notSubmittedUsers = nonAdminUsers.filter(emp => !todayUpdates.some(tu => tu.userId === emp.id && (tu.morningSubmittedAt || tu.eveningSubmittedAt)));
+          const teamSummaryUsers = [...submittedUsers, ...notSubmittedUsers];
+
+          return (
+            <div className="overflow-x-auto max-h-[520px] overflow-y-auto rounded-xl border border-slate-800">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 z-10 bg-slate-900/95 text-slate-400 font-semibold border-b border-slate-800 uppercase text-[10px] tracking-wider backdrop-blur">
+                  <tr>
+                    <th className="p-3">Employee</th>
+                    <th className="p-3">Morning Update</th>
+                    <th className="p-3">Morning Time</th>
+                    <th className="p-3">Evening Update</th>
+                    <th className="p-3">Evening Time</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 text-slate-300">
+                  {teamSummaryUsers.map(emp => {
+                    const update = todayUpdates.find(u => u.userId === emp.id);
+                    const hasMorning = update?.morningSubmittedAt;
+                    const hasEvening = update?.eveningSubmittedAt;
+
+                    return (
+                      <tr key={emp.id} className="hover:bg-slate-800/40 transition">
+                        <td className="p-3">
+                          <div className="font-semibold text-white">{emp.fullName}</div>
+                          <div className="text-[10px] text-slate-500">{emp.email}</div>
+                          <div className="text-[10px] text-slate-600">{emp.department} • {emp.designation}</div>
+                        </td>
+                        <td className="p-3 max-w-xs">
+                          {hasMorning ? (
+                            <div className="space-y-1">
+                              <p className="text-slate-200 line-clamp-2">{update.morningPlannedWork || '—'}</p>
+                              {update.morningTaskTitle && (
+                                <div className="text-[10px] text-emerald-400 font-medium">Task: {update.morningTaskTitle}</div>
+                              )}
+                              {update.morningBlockers && (
+                                <div className="text-[10px] text-rose-400 font-semibold">Blocker: {update.morningBlockers}</div>
+                              )}
+                              {update.morningEstHours && (
+                                <div className="text-[9px] text-slate-500">Est. Hours: {update.morningEstHours} hrs</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-600 italic">Not submitted</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {hasMorning ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              <Sun className="w-3 h-3" />
+                              <span>{new Date(update.morningSubmittedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-600 italic text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="p-3 max-w-xs">
+                          {hasEvening ? (
+                            <div className="space-y-1">
+                              <p className="text-slate-200 line-clamp-2">{update.eveningCompletedWork || '—'}</p>
+                              {update.eveningChallenges && (
+                                <div className="text-[10px] text-amber-400">Challenges: {update.eveningChallenges}</div>
+                              )}
+                              {update.eveningNextDayPlan && (
+                                <div className="text-[10px] text-blue-400">Next: {update.eveningNextDayPlan}</div>
+                              )}
+                              {update.eveningHoursSpent && (
+                                <div className="text-[9px] text-slate-500">Hours: {update.eveningHoursSpent} hrs</div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-600 italic">Pending</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {hasEvening ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                              <Moon className="w-3 h-3" />
+                              <span>{new Date(update.eveningSubmittedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-600 italic text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {hasMorning && hasEvening ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              <CheckCircle className="w-3 h-3 inline mr-1" /> COMPLETE
+                            </span>
+                          ) : hasMorning ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              MORNING ONLY
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                              NO UPDATE
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+      </div>
+
       {/* My Last 7 Days */}
       <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
         <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -817,6 +980,16 @@ export const DashboardPage: React.FC<Props> = ({ openMorningModal, openEveningMo
           )}
         </div>
       </div>
+
+      <AdminUpdateStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={closeStatusModal}
+        kind={statusModalKind}
+        updateType={statusModalType}
+        users={users}
+        updates={updates}
+        today={today}
+      />
     </div>
   );
 };

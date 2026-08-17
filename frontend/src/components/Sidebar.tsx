@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Sun, Moon, Briefcase, CheckSquare, Calendar as CalendarIcon, FileText, BarChart3, ShieldAlert, Users, PanelLeftClose } from 'lucide-react';
+import { LayoutDashboard, Sun, Moon, Briefcase, CheckSquare, Calendar as CalendarIcon, FileText, BarChart3, ShieldAlert, Users, PanelLeftClose, CalendarDays } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface SidebarProps {
@@ -24,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openM
     { id: 'leave', label: 'Leave & Requests', icon: FileText },
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
     ...(currentUser.role === 'ADMIN' ? [
+      { id: 'admin-calendar', label: 'Admin Calendar', icon: CalendarDays },
       { id: 'users', label: 'User Management', icon: Users },
       { id: 'audit', label: 'Audit Logs', icon: ShieldAlert },
     ] : []),

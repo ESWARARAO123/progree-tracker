@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
-import { UserPlus, Shield, User as UserIcon, ToggleLeft, ToggleRight, Pencil, Trash2, X, RefreshCw, KeyRound, Copy } from 'lucide-react';
+import { UserPlus, Shield, User as UserIcon, ToggleLeft, ToggleRight, Pencil, Trash2, X, RefreshCw, KeyRound, Copy, MoreHorizontal } from 'lucide-react';
 
 interface User {
   id: string;
@@ -54,6 +54,7 @@ export const UsersPage: React.FC = () => {
   });
   const [editError, setEditError] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const loadUsers = async () => {
     if (!token) return;
@@ -447,21 +448,45 @@ export const UsersPage: React.FC = () => {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="relative inline-flex items-center justify-end">
                     <button
-                      onClick={() => startEditing(u)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-blue-600/20 hover:border-blue-500/30 border border-slate-700 text-slate-300 hover:text-blue-400 transition"
-                      title="Edit user"
+                      onClick={() => setOpenMenuId(openMenuId === u.id ? null : u.id)}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition"
+                      title="More actions"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <MoreHorizontal className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(u.id, u.full_name)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600/20 hover:border-rose-500/30 border border-slate-700 text-slate-300 hover:text-rose-400 transition"
-                      title="Delete user"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+
+                    {openMenuId === u.id && (
+                      <div className="absolute right-0 top-10 z-20 w-36 rounded-xl border border-slate-700 bg-slate-900 shadow-xl overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            startEditing(u);
+                          }}
+                          className="flex w-full items-center space-x-2 px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            handleDelete(u.id, u.full_name);
+                          }}
+                          className="flex w-full items-center space-x-2 px-3 py-2 text-left text-sm text-rose-300 hover:bg-slate-800"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                        <button
+                          onClick={() => setOpenMenuId(null)}
+                          className="flex w-full items-center justify-center px-3 py-2 text-sm text-slate-400 hover:bg-slate-800"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </td>
               </tr>

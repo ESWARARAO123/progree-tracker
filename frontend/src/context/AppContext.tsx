@@ -37,8 +37,10 @@ interface AppContextType {
   createTask: (task: any) => Promise<void>;
   updateTaskStatus: (taskId: string, status: Task['status'], attachmentUrl?: string, attachmentName?: string) => Promise<void>;
   updateTask: (taskId: string, data: any) => Promise<void>;
+  deleteTask: (taskId: string) => Promise<void>;
   applyLeave: (data: { requestType?: string; startDate: string; endDate: string; reason: string }) => Promise<void>;
   reviewLeaveRequest: (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => Promise<void>;
+  deleteLeaveRequest: (id: string) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
   updatePreferences: (preferences: Record<string, any>) => Promise<void>;
   trigger10PmScan: () => Promise<void>;
@@ -498,6 +500,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks(prev => prev.map(t => t.id === mapped.id ? mapped : t));
   }, [token]);
 
+  const deleteTask = useCallback(async (taskId: string) => {
+    if (!token) return;
+    await api.deleteTask(token, taskId);
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+  }, [token]);
+
   const applyLeave = useCallback(async (data: { requestType?: string; startDate: string; endDate: string; reason: string }) => {
     if (!token) return;
     const result = await api.applyLeave(token, {
@@ -518,6 +526,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const result = await api.reviewLeaveRequest(token, id, { status, admin_comment: comment });
     const mapped = mapLeave(result);
     setLeaveRequests(prev => prev.map(r => r.id === mapped.id ? mapped : r));
+    try {
+      const bRes = await api.getLeaveSummary(token);
+      setLeaveBalance(mapLeaveBalance(bRes));
+    } catch { /* ignore */ }
+  }, [token]);
+
+  const deleteLeaveRequest = useCallback(async (id: string) => {
+    if (!token) return;
+    await api.deleteLeaveRequest(token, id);
+    setLeaveRequests(prev => prev.filter(r => r.id !== id));
     try {
       const bRes = await api.getLeaveSummary(token);
       setLeaveBalance(mapLeaveBalance(bRes));
@@ -591,8 +609,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createTask,
       updateTaskStatus,
       updateTask,
+      deleteTask,
       applyLeave,
       reviewLeaveRequest,
+      deleteLeaveRequest,
       changePassword,
       updatePreferences,
       trigger10PmScan,

@@ -1,24 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Users, Check, X, Clock, MessageSquare, FolderOpen } from 'lucide-react';
+import * as api from '../api';
 import { NewProjectModal } from '../components/NewProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { DeleteProjectModal } from '../components/DeleteProjectModal';
 import { ProjectChatModal } from '../components/ProjectChatModal';
 import { ProjectDocumentsModal } from '../components/ProjectDocumentsModal';
+import { ProjectStatusModal } from '../components/ProjectStatusModal';
+import { ProjectTeamUpdatesModal } from '../components/ProjectTeamUpdatesModal';
 import { NewTaskModal } from '../components/NewTaskModal';
 import { isWithinDays } from '../utils/date';
+import { useAuth } from '../context/AuthContext';
 import type { Project } from '../types';
 
 export const ProjectsPage: React.FC = () => {
   const { projects, currentUser, loading, selectProject, requestProjectAccess, reviewProjectRequest, projectRequests } = useApp();
+  const { token } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [chatProject, setChatProject] = useState<Project | null>(null);
   const [documentsProject, setDocumentsProject] = useState<Project | null>(null);
   const [taskProject, setTaskProject] = useState<Project | null>(null);
+  const [statusProject, setStatusProject] = useState<Project | null>(null);
+  const [teamUpdatesProject, setTeamUpdatesProject] = useState<Project | null>(null);
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
+  const [adminMenuProjectId, setAdminMenuProjectId] = useState<string | null>(null);
   const [membersMenuProjectId, setMembersMenuProjectId] = useState<string | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
 
@@ -31,13 +39,16 @@ export const ProjectsPage: React.FC = () => {
       if (menuProjectId && !target.closest('[data-project-menu]')) {
         setMenuProjectId(null);
       }
+      if (adminMenuProjectId && !target.closest('[data-admin-menu]')) {
+        setAdminMenuProjectId(null);
+      }
       if (membersMenuProjectId && !target.closest('[data-members-menu]')) {
         setMembersMenuProjectId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuProjectId, membersMenuProjectId]);
+  }, [menuProjectId, adminMenuProjectId, membersMenuProjectId]);
 
   if (loading) {
     return (
@@ -59,12 +70,33 @@ export const ProjectsPage: React.FC = () => {
     }
   };
 
+  const handleSaveStatus = async (projectId: string, status: string) => {
+    if (!status.trim() || !token) {
+      console.error('No token or empty status', { token: token ? 'exists' : 'missing' });
+      return;
+    }
+    try {
+      console.log('Saving status:', projectId, status);
+      console.log('Token length:', token.length);
+      const result = await api.updateProject(token, projectId, { owner_status: status });
+      console.log('Save result:', result);
+    } catch (err: any) {
+      console.error('Failed to save project status:', err);
+      console.error('Error response:', err.response);
+      console.error('Error status:', err.response?.status);
+      console.error('Error data:', err.response?.data);
+      alert(`Failed to save status update: ${err.message || err.response?.data?.detail || 'Unknown error'}`);
+      throw err; // Re-throw so modal stays open
+    }
+  };
+
   const renderProjectCard = (p: Project) => {
     const isMine = p.assignedUsers.some(u => u.id === currentUser.id);
     const isSelected = currentUser.currentProjectId === p.id;
     const isOwner = p.owner?.id === currentUser.id;
     const requested = alreadyRequested(p.id);
-    const canUpdateProject = isAdmin || (isOwner && isWithinDays(p.createdAt, 7));
+    const canUpdateProject = isAdmin || (isOwner && isWithinDays(p.createdAt || '', 7));
+    const canAccessFiles = isAdmin || isOwner || isMine;
 
     return (
       <div key={p.id} className={`glass-panel p-5 rounded-2xl border space-y-4 flex flex-col justify-between transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
@@ -88,8 +120,8 @@ export const ProjectsPage: React.FC = () => {
               </span>
             </div>
 
-            {/* Top Right Action Toolbar (Team Members, Create Task, Project Chat, Admin Menu) */}
-            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+            {/* Top Right Action Toolbar (3 consolidated buttons) */}
+            <div className="flex items-center gap-1.5 shrink-0">
               {/* 1. Team Members Button with Popover */}
               <div className="relative" data-members-menu>
                 <button
@@ -134,71 +166,100 @@ export const ProjectsPage: React.FC = () => {
                 )}
               </div>
 
-              {/* 2. Update Project Button (owner within 7 days, or admin) */}
-              {canUpdateProject && (
-                <button
-                  onClick={() => setEditingProject(p)}
-                  className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center space-x-1 transition"
-                  title="Update Project Details"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span className="text-[11px]">Update</span>
-                </button>
-              )}
-
-              {/* 3. Create Task for This Project Button */}
-              {(isOwner || isAdmin) && (
-                <button
-                  onClick={() => setTaskProject(p)}
-                  className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-xs font-semibold flex items-center space-x-1 transition"
-                  title="Create Task for This Project"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span className="text-[11px]">Task</span>
-                </button>
-              )}
-
-              {/* 3. Project Database Button */}
-              <button
-                onClick={() => setDocumentsProject(p)}
-                className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center space-x-1 transition"
-                title="Project Database (Files)"
-              >
-                <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[11px]">Files</span>
-              </button>
-
-              {/* 3. Project Chat Button */}
-              <button
-                onClick={() => setChatProject(p)}
-                className="px-2 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center space-x-1 transition"
-                title="Project Chat"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
-                <span className="text-[11px]">Chat</span>
-              </button>
-
-              {/* Admin Context Menu */}
-              {isAdmin && (
+              {/* 2. Actions Menu (Update, Task, Files, Chat) - consolidated dropdown */}
+              {canUpdateProject || isOwner || isAdmin || canAccessFiles ? (
                 <div className="relative" data-project-menu>
                   <button
                     onClick={() => setMenuProjectId(menuProjectId === p.id ? null : p.id)}
+                    className="px-2 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-xs font-semibold flex items-center space-x-1 transition"
+                    title="Project Actions"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span className="text-[11px]">Actions</span>
+                  </button>
+
+                  {menuProjectId === p.id && (
+                    <div className="absolute right-0 top-8 w-44 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 p-1.5 space-y-1">
+                      {canUpdateProject && (
+                        <button
+                          onClick={() => { setEditingProject(p); setMenuProjectId(null); }}
+                          className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-700 transition"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Edit Project</span>
+                        </button>
+                      )}
+                      {(isOwner || isAdmin) && (
+                        <button
+                          onClick={() => { setTaskProject(p); setMenuProjectId(null); }}
+                          className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-700 transition"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Create Task</span>
+                        </button>
+                      )}
+                      {canAccessFiles && (
+                        <>
+                          <button
+                            onClick={() => { setDocumentsProject(p); setMenuProjectId(null); }}
+                            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-700 transition"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Files</span>
+                          </button>
+                          <button
+                            onClick={() => { setChatProject(p); setMenuProjectId(null); }}
+                            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-700 transition"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+                            <span>Chat</span>
+                          </button>
+                        </>
+                      )}
+                      {(isOwner || isAdmin) && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); console.log('Add Project Status clicked', p.id); setStatusProject(p); setMenuProjectId(null); }}
+                            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-emerald-300 hover:bg-emerald-500/10 transition"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Add Project Status</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setTeamUpdatesProject(p); setMenuProjectId(null); }}
+                            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-blue-300 hover:bg-blue-500/10 transition"
+                          >
+                            <Users className="w-3.5 h-3.5 text-blue-400" />
+                            <span>View Team Updates & Tasks</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* 3. Admin Menu (separate for admins) */}
+              {isAdmin && (
+                <div className="relative" data-admin-menu>
+                  <button
+                    onClick={() => setAdminMenuProjectId(adminMenuProjectId === p.id ? null : p.id)}
                     className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition"
                   >
                     <MoreVertical className="w-3.5 h-3.5" />
                   </button>
 
-                  {menuProjectId === p.id && (
+                  {adminMenuProjectId === p.id && (
                     <div className="absolute right-0 top-8 w-40 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-30 p-1.5">
                       <button
-                        onClick={() => { setEditingProject(p); setMenuProjectId(null); }}
+                        onClick={() => { setEditingProject(p); setAdminMenuProjectId(null); }}
                         className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-700 transition"
                       >
                         <Pencil className="w-3.5 h-3.5 text-purple-400" />
                         <span>Edit Project</span>
                       </button>
                       <button
-                        onClick={() => { setDeletingProject(p); setMenuProjectId(null); }}
+                        onClick={() => { setDeletingProject(p); setAdminMenuProjectId(null); }}
                         className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -211,17 +272,18 @@ export const ProjectsPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <h3 className="font-bold text-base text-white">{p.name}</h3>
-            <p className="text-xs text-slate-400 mt-1 line-clamp-2">{p.description}</p>
-          </div>
-
-          {p.owner && (
-            <div className="flex items-center space-x-2 text-[11px] text-slate-400 bg-slate-800/50 border border-slate-700/60 rounded-lg px-2.5 py-1.5">
-              <UserCircle2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-              <span className="truncate">Owner: <span className="text-slate-200 font-semibold">{p.owner.fullName}</span></span>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="font-bold text-base text-white flex items-center space-x-2">{p.name}
+                {p.owner && (
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Owner: {p.owner.fullName}
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 line-clamp-2">{p.description}</p>
             </div>
-          )}
+          </div>
 
           {/* Quick Team Member Avatar Preview */}
           {p.assignedUsers.length > 0 && (
@@ -312,6 +374,7 @@ export const ProjectsPage: React.FC = () => {
   const renderCompactProjectCard = (p: Project) => {
     const isSelected = currentUser.currentProjectId === p.id;
     const requested = alreadyRequested(p.id);
+    const canAccessFiles = isAdmin || isMemberOf(p);
 
     return (
       <div key={p.id} className={`glass-panel p-4 rounded-2xl border space-y-3 transition ${isSelected ? 'border-emerald-500/50 bg-emerald-500/[0.04]' : 'border-slate-800 hover:border-slate-700'}`}>
@@ -339,22 +402,26 @@ export const ProjectsPage: React.FC = () => {
         </div>
 
         <div className="pt-2 border-t border-slate-800 flex items-center gap-2">
-          <button
-            onClick={() => setChatProject(p)}
-            className="flex-1 px-2 py-1.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-300 text-[11px] font-semibold flex items-center justify-center space-x-1 hover:bg-blue-600/30 transition"
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Chat</span>
-          </button>
+          {canAccessFiles && (
+            <button
+              onClick={() => setChatProject(p)}
+              className="flex-1 px-2 py-1.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-300 text-[11px] font-semibold flex items-center justify-center space-x-1 hover:bg-blue-600/30 transition"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setDocumentsProject(p)}
-            className="px-2 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-semibold flex items-center justify-center space-x-1 hover:bg-amber-500/30 transition"
-            title="Project Database (Files)"
-          >
-            <FolderOpen className="w-3.5 h-3.5" />
-            <span>Files</span>
-          </button>
+          {canAccessFiles && (
+            <button
+              onClick={() => setDocumentsProject(p)}
+              className="px-2 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-semibold flex items-center justify-center space-x-1 hover:bg-amber-500/30 transition"
+              title="Project Database (Files)"
+            >
+              <FolderOpen className="w-3.5 h-3.5" />
+              <span>Files</span>
+            </button>
+          )}
 
           {isSelected ? (
             <span className="px-2 py-1.5 rounded-xl text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
@@ -530,6 +597,18 @@ export const ProjectsPage: React.FC = () => {
         isOpen={!!taskProject}
         onClose={() => setTaskProject(null)}
         initialProjectId={taskProject?.id}
+      />
+      <ProjectStatusModal
+        isOpen={!!statusProject}
+        onClose={() => setStatusProject(null)}
+        project={statusProject}
+        onSave={handleSaveStatus}
+      />
+      <ProjectTeamUpdatesModal
+        isOpen={!!teamUpdatesProject}
+        onClose={() => setTeamUpdatesProject(null)}
+        project={teamUpdatesProject}
+        token={token || ''}
       />
     </div>
   );

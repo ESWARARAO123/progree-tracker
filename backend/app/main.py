@@ -89,6 +89,12 @@ async def lifespan(app: FastAPI):
         await conn.execute(sa_text(
             "ALTER TYPE request_type_enum ADD VALUE IF NOT EXISTS 'WFBO'"
         ))
+        await conn.execute(sa_text(
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner_status TEXT"
+        ))
+        await conn.execute(sa_text(
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner_status_updated_at TIMESTAMP WITH TIME ZONE"
+        ))
 
     async with async_session() as db:
         role_result = await db.execute(select(Role).where(Role.name == "ADMIN"))
@@ -153,6 +159,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     description="REST API for Daily Work Tracker Enterprise System",
     lifespan=lifespan,
+    max_body_size=52428800,  # 50MB
 )
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

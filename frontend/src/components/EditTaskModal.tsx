@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CheckSquare, X } from 'lucide-react';
+import { CheckSquare, Trash2, X } from 'lucide-react';
 import type { Priority, TaskStatus, Task } from '../types';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export const EditTaskModal: React.FC<Props> = ({ isOpen, onClose, task }) => {
-  const { updateTask, users, currentUser } = useApp();
+  const { updateTask, deleteTask, users, currentUser } = useApp();
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
@@ -36,6 +36,12 @@ export const EditTaskModal: React.FC<Props> = ({ isOpen, onClose, task }) => {
       payload.assigned_to = assignedTo || null;
     }
     await updateTask(task.id, payload);
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete task "${task.title}"?`)) return;
+    await deleteTask(task.id);
     onClose();
   };
 
@@ -135,20 +141,30 @@ export const EditTaskModal: React.FC<Props> = ({ isOpen, onClose, task }) => {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-2">
+          <div className="flex items-center justify-between pt-2">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+              onClick={handleDelete}
+              className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition"
             >
-              Cancel
+              <Trash2 className="w-4 h-4" />
+              <span>Delete</span>
             </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition"
-            >
-              Save Changes
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </form>
       </div>

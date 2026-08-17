@@ -16,8 +16,12 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   const myActiveTasks = tasks.filter(t => (t.assignedTo === currentUser.id || currentUser.role === 'ADMIN') && t.status !== 'COMPLETED');
 
+  const myProjects = projects.filter(p =>
+    p.assignedUsers.some(u => u.id === currentUser.id) || p.owner?.id === currentUser.id || currentUser.role === 'ADMIN'
+  );
+
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
-  const [projectId, setProjectId] = useState(projects[0]?.id || '');
+  const [projectId, setProjectId] = useState(myProjects[0]?.id || '');
   const [primaryTask, setPrimaryTask] = useState('');
   const [plannedWork, setPlannedWork] = useState('');
   const [estHours, setEstHours] = useState(8.0);
@@ -134,7 +138,7 @@ export const MorningUpdateModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   onChange={e => setProjectId(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
                 >
-                  {projects.map(p => (
+                  {myProjects.map(p => (
                     <option key={p.id} value={p.id}>{p.name} ({p.priority})</option>
                   ))}
                 </select>
