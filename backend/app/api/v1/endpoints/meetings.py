@@ -21,6 +21,7 @@ def _serialize(m: Meeting) -> MeetingResponse:
         start_time=m.start_time,
         end_time=m.end_time,
         meeting_link=m.meeting_link,
+        mom=m.mom,
         created_by=str(m.created_by),
         created_by_name=m.creator.full_name if m.creator else None,
         assignee_ids=[str(a.user_id) for a in m.assignees],
@@ -60,6 +61,7 @@ async def create_meeting(
         start_time=body.start_time,
         end_time=body.end_time,
         meeting_link=body.meeting_link,
+        mom=body.mom,
         created_by=admin.id,
     )
     db.add(meeting)

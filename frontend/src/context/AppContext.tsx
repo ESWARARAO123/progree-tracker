@@ -38,7 +38,7 @@ interface AppContextType {
   updateTaskStatus: (taskId: string, status: Task['status'], attachmentUrl?: string, attachmentName?: string) => Promise<void>;
   updateTask: (taskId: string, data: any) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
-  applyLeave: (data: { requestType?: string; startDate: string; endDate: string; reason: string }) => Promise<void>;
+  applyLeave: (data: { requestType?: string; startDate: string; endDate: string; reason: string; userId?: string; status?: string }) => Promise<void>;
   reviewLeaveRequest: (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => Promise<void>;
   deleteLeaveRequest: (id: string) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
@@ -506,13 +506,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks(prev => prev.filter(t => t.id !== taskId));
   }, [token]);
 
-  const applyLeave = useCallback(async (data: { requestType?: string; startDate: string; endDate: string; reason: string }) => {
+  const applyLeave = useCallback(async (data: { requestType?: string; startDate: string; endDate: string; reason: string; userId?: string; status?: string }) => {
     if (!token) return;
     const result = await api.applyLeave(token, {
       request_type: data.requestType || 'LEAVE',
       start_date: data.startDate,
       end_date: data.endDate,
       reason: data.reason,
+      user_id: data.userId,
+      status: data.status,
     });
     setLeaveRequests(prev => [mapLeave(result), ...prev]);
     try {

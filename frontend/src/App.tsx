@@ -7,7 +7,6 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { TasksPage } from './pages/TasksPage';
 import { CalendarPage } from './pages/CalendarPage';
-import { AdminCalendarPage } from './pages/AdminCalendarPage';
 import { LeavePage } from './pages/LeavePage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AuditPage } from './pages/AuditPage';
@@ -39,7 +38,7 @@ const AppContent: React.FC = () => {
   );
 };
 
-const VALID_TABS = ['dashboard', 'projects', 'tasks', 'calendar', 'admin-calendar', 'leave', 'reports', 'audit', 'users'];
+const VALID_TABS = ['dashboard', 'projects', 'tasks', 'calendar', 'leave', 'leave-calendar', 'reports', 'audit', 'users'];
 
 const getInitialTab = () => {
   const hash = window.location.hash.replace('#', '');
@@ -106,8 +105,8 @@ const AppShell: React.FC = () => {
             {activeTab === 'projects' && <ProjectsPage />}
             {activeTab === 'tasks' && <TasksPage />}
             {activeTab === 'calendar' && <CalendarPage />}
-            {activeTab === 'admin-calendar' && <AdminCalendarPage />}
-            {activeTab === 'leave' && <LeavePage />}
+            {activeTab === 'leave' && <LeavePage viewMode="requests" />}
+            {activeTab === 'leave-calendar' && <LeavePage viewMode="calendar" />}
             {activeTab === 'reports' && <ReportsPage />}
             {activeTab === 'audit' && <AuditPage />}
             {activeTab === 'users' && <UsersPage />}

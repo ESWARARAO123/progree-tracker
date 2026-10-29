@@ -21,6 +21,8 @@ class CreateProjectRequest(BaseModel):
     end_date: date | None = None
     priority: str = "MEDIUM"
     status: str = "PLANNING"
+    github_url: str | None = None
+    sharepoint_url: str | None = None
     owner_id: str | None = None
     assigned_user_ids: list[str] = []
 
@@ -33,6 +35,8 @@ class UpdateProjectRequest(BaseModel):
     priority: str | None = None
     status: str | None = None
     progress_percentage: float | None = None
+    github_url: str | None = None
+    sharepoint_url: str | None = None
     owner_id: str | None = None
     assigned_user_ids: list[str] | None = None
     owner_status: str | None = None
@@ -47,6 +51,8 @@ class ProjectResponse(BaseModel):
     priority: str
     status: str
     progress_percentage: float
+    github_url: str | None = None
+    sharepoint_url: str | None = None
     created_by: str | None
     owner: OwnerInfo | None = None
     assigned_users: list[AssignedUser] = []

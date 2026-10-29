@@ -19,6 +19,8 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [endDate, setEndDate] = useState('');
   const [priority, setPriority] = useState<Priority>('HIGH');
   const [status, setStatus] = useState<ProjectStatus>('IN_PROGRESS');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [sharepointUrl, setSharepointUrl] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
 
@@ -38,6 +40,8 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
       endDate,
       priority,
       status,
+      githubUrl: githubUrl || null,
+      sharepointUrl: sharepointUrl || null,
       ownerId: ownerId || null,
       assignedUserIds: assignedIds,
     });
@@ -151,6 +155,29 @@ export const NewProjectModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <option value="ON_HOLD">On Hold</option>
                 <option value="COMPLETED">Completed</option>
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">GitHub Repository URL</label>
+              <input
+                type="text"
+                value={githubUrl}
+                onChange={e => setGithubUrl(e.target.value)}
+                placeholder="https://github.com/org/repo or git@github.com:org/repo.git"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">SharePoint Link</label>
+              <input
+                type="url"
+                value={sharepointUrl}
+                onChange={e => setSharepointUrl(e.target.value)}
+                placeholder="https://company.sharepoint.com/sites/project"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+              />
             </div>
           </div>
 

@@ -21,6 +21,8 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
   const [priority, setPriority] = useState<Priority>(project.priority as Priority);
   const [status, setStatus] = useState<ProjectStatus>(project.status as ProjectStatus);
   const [ownerId, setOwnerId] = useState(project.owner?.id || '');
+  const [githubUrl, setGithubUrl] = useState(project.githubUrl || '');
+  const [sharepointUrl, setSharepointUrl] = useState(project.sharepointUrl || '');
 
   const [assignedIds, setAssignedIds] = useState<string[]>(() => project.assignedUsers ? project.assignedUsers.map(u => u.id) : []);
 
@@ -40,6 +42,8 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
       endDate: endDate || null,
       priority,
       status,
+      githubUrl: githubUrl || null,
+      sharepointUrl: sharepointUrl || null,
     };
     if (currentUser.role === 'ADMIN') {
       payload.ownerId = ownerId || null;
@@ -155,6 +159,29 @@ export const EditProjectModal: React.FC<Props> = ({ isOpen, onClose, project }) 
                 <option value="ON_HOLD">On Hold</option>
                 <option value="COMPLETED">Completed</option>
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">GitHub Repository URL</label>
+              <input
+                type="text"
+                value={githubUrl}
+                onChange={e => setGithubUrl(e.target.value)}
+                placeholder="https://github.com/org/repo or git@github.com:org/repo.git"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">SharePoint Links (comma-separated)</label>
+              <input
+                type="text"
+                value={sharepointUrl}
+                onChange={e => setSharepointUrl(e.target.value)}
+                placeholder="https://company.sharepoint.com/sites/project, https://..."
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+              />
             </div>
           </div>
 

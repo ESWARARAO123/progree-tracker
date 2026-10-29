@@ -40,10 +40,14 @@ def _serialize_project(p: Project, assigned_map: dict[str, list[AssignedUser]]) 
         priority=p.priority,
         status=p.status,
         progress_percentage=float(p.progress_percentage) if p.progress_percentage else 0.0,
+        github_url=p.github_url,
+        sharepoint_url=p.sharepoint_url,
         created_by=str(p.created_by) if p.created_by else None,
         owner=OwnerInfo(id=str(p.owner.id), full_name=p.owner.full_name, email=p.owner.email) if p.owner else None,
         assigned_users=assigned_map.get(str(p.id), []),
         created_at=p.created_at,
+        owner_status=p.owner_status,
+        owner_status_updated_at=p.owner_status_updated_at,
     )
 
 
@@ -96,6 +100,8 @@ async def create_project(
         end_date=body.end_date,
         priority=body.priority,
         status=body.status,
+        github_url=body.github_url,
+        sharepoint_url=body.sharepoint_url,
         owner_id=owner_id_val,
         created_by=admin.id,
     )
@@ -157,6 +163,10 @@ async def update_project(
         project.status = body.status
     if body.progress_percentage is not None:
         project.progress_percentage = body.progress_percentage
+    if body.github_url is not None:
+        project.github_url = body.github_url
+    if body.sharepoint_url is not None:
+        project.sharepoint_url = body.sharepoint_url
     if body.owner_status is not None:
         project.owner_status = body.owner_status
         project.owner_status_updated_at = datetime.utcnow()

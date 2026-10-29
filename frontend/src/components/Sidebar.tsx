@@ -22,9 +22,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openM
     { id: 'tasks', label: 'Task Board', icon: CheckSquare },
     { id: 'calendar', label: 'Calendar & Attendance', icon: CalendarIcon },
     { id: 'leave', label: 'Leave & Requests', icon: FileText },
+    ...(currentUser.role === 'ADMIN' ? [
+      { id: 'leave-calendar', label: 'Leave Calendar', icon: CalendarDays },
+    ] : []),
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
     ...(currentUser.role === 'ADMIN' ? [
-      { id: 'admin-calendar', label: 'Admin Calendar', icon: CalendarDays },
       { id: 'users', label: 'User Management', icon: Users },
       { id: 'audit', label: 'Audit Logs', icon: ShieldAlert },
     ] : []),

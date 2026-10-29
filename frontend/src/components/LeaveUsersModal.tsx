@@ -7,6 +7,7 @@ import type { UserLeaveUsage } from '../types';
 interface LeaveUsersModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAddLeave?: (userId: string) => void;
 }
 
 function fmtMonth(ym: string): string {
@@ -21,7 +22,7 @@ function shiftMonth(ym: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export const LeaveUsersModal: React.FC<LeaveUsersModalProps> = ({ isOpen, onClose }) => {
+export const LeaveUsersModal: React.FC<LeaveUsersModalProps> = ({ isOpen, onClose, onAddLeave }) => {
   const { token } = useAuth();
   const today = new Date();
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -136,6 +137,7 @@ export const LeaveUsersModal: React.FC<LeaveUsersModalProps> = ({ isOpen, onClos
                     <span className="inline-flex items-center space-x-1"><Building2 className="w-3 h-3 text-sky-400" /><span>WFBO</span></span>
                   </th>
                   <th className="p-3 text-center">Total</th>
+                  {onAddLeave && <th className="p-3 text-right">Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800 text-slate-300">
@@ -166,6 +168,17 @@ export const LeaveUsersModal: React.FC<LeaveUsersModalProps> = ({ isOpen, onClos
                     <td className="p-3 text-center">
                       <span className="font-bold text-white bg-slate-800 border border-slate-700 rounded-lg px-2 py-0.5">{u.total}</span>
                     </td>
+                    {onAddLeave && (
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => onAddLeave(u.userId)}
+                          className="px-2.5 py-1 rounded-lg bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/30 text-orange-300 text-[10px] font-semibold transition"
+                          title={`Add leave for ${u.userName}`}
+                        >
+                          + Leave
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

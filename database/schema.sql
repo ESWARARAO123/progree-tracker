@@ -52,6 +52,8 @@ CREATE TABLE projects (
     priority priority_enum DEFAULT 'MEDIUM',
     status project_status_enum DEFAULT 'PLANNING',
     progress_percentage DECIMAL(5,2) DEFAULT 0.00,
+    github_url VARCHAR(500),
+    sharepoint_url VARCHAR(500),
     created_by UUID REFERENCES users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

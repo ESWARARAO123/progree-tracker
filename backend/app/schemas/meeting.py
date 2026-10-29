@@ -9,6 +9,7 @@ class CreateMeetingRequest(BaseModel):
     start_time: str
     end_time: str | None = None
     meeting_link: str | None = None
+    mom: str | None = None
     assignee_ids: list[str] = []
 
 
@@ -19,6 +20,7 @@ class UpdateMeetingRequest(BaseModel):
     start_time: str | None = None
     end_time: str | None = None
     meeting_link: str | None = None
+    mom: str | None = None
     assignee_ids: list[str] | None = None
 
 
@@ -30,6 +32,7 @@ class MeetingResponse(BaseModel):
     start_time: str
     end_time: str | None = None
     meeting_link: str | None = None
+    mom: str | None = None
     created_by: str
     created_by_name: str | None = None
     assignee_ids: list[str] = []

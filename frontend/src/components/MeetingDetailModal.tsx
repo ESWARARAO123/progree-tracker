@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { CalendarDays, X, Clock, Link, UserCheck, Edit, Trash2, Calendar } from 'lucide-react';
+import { CalendarDays, X, Clock, Link, UserCheck, Edit, Trash2, Calendar, FileText } from 'lucide-react';
 import type { Meeting } from '../types';
 
 interface Props {
@@ -45,7 +45,7 @@ export const MeetingDetailModal: React.FC<Props> = ({ isOpen, onClose, meeting, 
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-1">Title</label>
             <p className="text-sm font-semibold text-white">{meeting.title}</p>
@@ -55,6 +55,16 @@ export const MeetingDetailModal: React.FC<Props> = ({ isOpen, onClose, meeting, 
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1">Description</label>
               <p className="text-sm text-slate-300 whitespace-pre-wrap">{meeting.description}</p>
+            </div>
+          )}
+
+          {meeting.mom && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <FileText className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Minutes of Meeting (MoM)</span>
+              </div>
+              <p className="text-sm text-emerald-200 whitespace-pre-wrap">{meeting.mom}</p>
             </div>
           )}
 

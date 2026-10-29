@@ -42,11 +42,11 @@ def _run_alembic_upgrade() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 1. Make sure the application database exists (fresh servers).
-    # 2. Apply Alembic migrations to create/upgrade the schema.
+    # 2. Apply Alembic migrations to create/upgrade the schema (run manually via 'alembic upgrade head' for now).
     loop = asyncio.get_running_loop()
     try:
         await loop.run_in_executor(None, ensure_database_exists)
-        await loop.run_in_executor(None, _run_alembic_upgrade)
+        # await loop.run_in_executor(None, _run_alembic_upgrade)  # Run manually to avoid startup deadlock
     except Exception:
         logger.exception("Database bootstrap failed")
         raise
@@ -133,9 +133,9 @@ async def lifespan(app: FastAPI):
                 select(ProjectDocument.id).where(
                     ProjectDocument.project_id == task.project_id,
                     ProjectDocument.file_url == task.attachment_url,
-                )
+                ).limit(1)
             )
-            if not existing.scalar_one_or_none():
+            if not existing.scalar():
                 db.add(ProjectDocument(
                     project_id=task.project_id,
                     user_id=task.assigned_to or task.created_by,

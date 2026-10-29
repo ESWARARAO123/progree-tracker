@@ -19,6 +19,8 @@ class Project(Base):
     priority = Column(SAEnum("LOW", "MEDIUM", "HIGH", "CRITICAL", name="priority_enum", create_type=False), default="MEDIUM")
     status = Column(SAEnum("PLANNING", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "ARCHIVED", name="project_status_enum", create_type=False), default="PLANNING")
     progress_percentage = Column(Numeric(5, 2), default=0.00)
+    github_url = Column(String(500), nullable=True)
+    sharepoint_url = Column(String(500), nullable=True)
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

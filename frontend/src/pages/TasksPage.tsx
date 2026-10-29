@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, CheckSquare, User, Calendar, Sun, ArrowUpDown, Edit3, Paperclip, ExternalLink, CheckCircle2, ArrowDown, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import { Plus, CheckSquare, User as UserIcon, Calendar, Sun, ArrowUpDown, Edit3, Paperclip, ExternalLink, CheckCircle2, ArrowDown, ChevronDown, ChevronUp, CheckCircle, AlertTriangle } from 'lucide-react';
 import { NewTaskModal } from '../components/NewTaskModal';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { UpdateTaskStatusModal } from '../components/UpdateTaskStatusModal';
 import { todayStr, getDaysRemaining, getDeadlineColor, getTotalDays } from '../utils/date';
-import type { TaskStatus, Task } from '../types';
+import type { TaskStatus, Task, User } from '../types';
 
 const statusProgress: Record<TaskStatus, number> = {
   'NOT_STARTED': 0,
@@ -42,12 +42,16 @@ export const TasksPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [statusProofTask, setStatusProofTask] = useState<Task | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('ALL');
-  const [selectedUserId, setSelectedUserId] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'PRIORITY' | 'DUE_DATE' | 'PROJECT' | 'STATUS'>('PRIORITY');
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  // Admin filter states
+  const [adminSelectedProjectId, setAdminSelectedProjectId] = useState<string>('ALL');
+  const [adminSelectedUserId, setAdminSelectedUserId] = useState<string>('ALL');
+  // Non-admin filter states - default to current user (owner) to show their tasks
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('ALL');
+  const [selectedProjectUserId, setSelectedProjectUserId] = useState<string>(currentUser?.id || 'ALL');
 
   const today = todayStr();
 
@@ -61,11 +65,11 @@ export const TasksPage: React.FC = () => {
 
   if (currentUser.role === 'ADMIN') {
     let filteredTasks = [...tasks];
-    if (selectedProjectId !== 'ALL') {
-      filteredTasks = filteredTasks.filter(t => t.projectId === selectedProjectId);
+    if (adminSelectedProjectId !== 'ALL') {
+      filteredTasks = filteredTasks.filter(t => t.projectId === adminSelectedProjectId);
     }
-    if (selectedUserId !== 'ALL') {
-      filteredTasks = filteredTasks.filter(t => t.assignedTo === selectedUserId);
+    if (adminSelectedUserId !== 'ALL') {
+      filteredTasks = filteredTasks.filter(t => t.assignedTo === adminSelectedUserId);
     }
 
     const pendingTasks = filteredTasks.filter(t => t.status !== 'COMPLETED');
@@ -120,8 +124,8 @@ export const TasksPage: React.FC = () => {
             <div className="flex items-center space-x-2">
               <span className="text-xs text-slate-400 font-medium">Project:</span>
               <select
-                value={selectedProjectId}
-                onChange={e => setSelectedProjectId(e.target.value)}
+                value={adminSelectedProjectId}
+                onChange={e => setAdminSelectedProjectId(e.target.value)}
                 className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
               >
                 <option value="ALL">All Projects ({projects.length})</option>
@@ -134,8 +138,8 @@ export const TasksPage: React.FC = () => {
             <div className="flex items-center space-x-2">
               <span className="text-xs text-slate-400 font-medium">Assignee:</span>
               <select
-                value={selectedUserId}
-                onChange={e => setSelectedUserId(e.target.value)}
+                value={adminSelectedUserId}
+                onChange={e => setAdminSelectedUserId(e.target.value)}
                 className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
               >
                 <option value="ALL">All Team Members ({users.length})</option>
@@ -203,7 +207,7 @@ export const TasksPage: React.FC = () => {
                       <td className="px-4 py-3">
                         <div className="font-semibold text-white">{t.title}</div>
                         <div className="flex items-center space-x-1 text-[10px] text-slate-500 mt-0.5">
-                          <User className="w-3 h-3" />
+                          <UserIcon className="w-3 h-3" />
                           <span>Created by <span className="text-slate-400 font-medium">{t.createdByName || '—'}</span></span>
                         </div>
                         {t.description && <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[200px]">{t.description}</div>}
@@ -211,7 +215,7 @@ export const TasksPage: React.FC = () => {
                       <td className="px-4 py-3 text-slate-300">{t.projectName}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-1.5">
-                          <User className="w-3 h-3 text-slate-500" />
+                          <UserIcon className="w-3 h-3 text-slate-500" />
                           <span className="text-slate-300">{t.assignedToName || 'Unassigned'}</span>
                         </div>
                       </td>
@@ -326,7 +330,7 @@ export const TasksPage: React.FC = () => {
                       <td className="px-4 py-3 text-slate-300">{t.projectName}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-1.5">
-                          <User className="w-3 h-3 text-slate-500" />
+                          <UserIcon className="w-3 h-3 text-slate-500" />
                           <span className="text-slate-300">{t.assignedToName || 'Unassigned'}</span>
                         </div>
                       </td>
@@ -376,15 +380,41 @@ export const TasksPage: React.FC = () => {
     );
   }
 
-  const myTasks = tasks.filter(t => t.assignedTo === currentUser.id);
+
+  // Get user's projects (owned or assigned)
+  const userProjects = projects.filter(p => 
+    p.owner?.id === currentUser.id || p.assignedUsers.some(u => u.id === currentUser.id)
+  );
+
+  // For project owners, show all tasks in their projects + their own "Others" tasks; for others, only their own tasks
+  const isProjectOwner = userProjects.some(p => p.owner?.id === currentUser.id);
+  const myTasks = isProjectOwner
+    ? tasks.filter(t => userProjects.some(p => p.id === t.projectId) || (t.assignedTo === currentUser.id && !t.projectId))
+    : tasks.filter(t => t.assignedTo === currentUser.id);
+
+  // Get users from selected project (for project-specific filtering)
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const projectUsers = selectedProject ? selectedProject.assignedUsers.filter((u: User) => u.isActive) : [];
+
+  // Filter tasks by selected project
+  let filteredTasks: Task[] = [...myTasks];
+  if (selectedProjectId !== "ALL") {
+    filteredTasks = filteredTasks.filter((t: Task) => t.projectId === selectedProjectId);
+  }
+  // Filter by selected user (works across all projects or within selected project)
+  if (selectedProjectUserId !== "ALL") {
+    filteredTasks = filteredTasks.filter((t: Task) => t.assignedTo === selectedProjectUserId);
+  }
+  
 
   const userTodayUpdate = updates.find(u => u.userId === currentUser.id && u.reportDate === today);
   const todayMorningTaskId = userTodayUpdate?.morningTaskId;
 
   // Column tasks
-  const myTasksColumn = myTasks.filter(t => t.status === 'NOT_STARTED');
-  const inProgressColumn = myTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'BLOCKED');
-  const completedColumn = myTasks.filter(t => t.status === 'COMPLETED');
+  const myTasksColumn = filteredTasks.filter((t: Task) => t.status === 'NOT_STARTED');
+  const inProgressColumn = filteredTasks.filter((t: Task) => t.status === 'IN_PROGRESS');
+  const blockedColumn = filteredTasks.filter((t: Task) => t.status === 'BLOCKED');
+  const completedColumn = filteredTasks.filter((t: Task) => t.status === 'COMPLETED');
 
   // Helper for deadline badge
   const getDeadlineBadge = (task: Task) => {
@@ -451,6 +481,7 @@ export const TasksPage: React.FC = () => {
   const columnConfig = [
     { id: 'NOT_STARTED', title: 'My Tasks', icon: CheckSquare, color: 'slate', tasks: myTasksColumn },
     { id: 'IN_PROGRESS', title: 'In Progress', icon: Sun, color: 'blue', tasks: inProgressColumn },
+    { id: 'BLOCKED', title: 'Blocked', icon: AlertTriangle, color: 'rose', tasks: blockedColumn },
     { id: 'COMPLETED', title: 'Completed', icon: CheckCircle2, color: 'emerald', tasks: completedColumn },
   ];
 
@@ -532,13 +563,22 @@ export const TasksPage: React.FC = () => {
         </div>
 
         <div className="pt-2 border-t border-slate-800">
-          <button
-            onClick={() => setStatusProofTask(task)}
-            className="w-full text-[10px] text-blue-400 hover:underline flex items-center justify-center space-x-1 py-1"
-          >
-            <Paperclip className="w-3 h-3" />
-            <span>Upload Proof / Docs</span>
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setEditingTask(task)}
+              className="flex-1 text-[10px] text-blue-400 hover:underline flex items-center justify-center space-x-1 py-1 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition"
+            >
+              <Edit3 className="w-3 h-3" />
+              <span>Edit Task</span>
+            </button>
+            <button
+              onClick={() => setStatusProofTask(task)}
+              className="flex-1 text-[10px] text-slate-400 hover:underline flex items-center justify-center space-x-1 py-1 border border-slate-700 rounded-lg hover:bg-slate-800 transition"
+            >
+              <Paperclip className="w-3 h-3" />
+              <span>Upload Proof</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -563,18 +603,60 @@ export const TasksPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0">
+      {/* Project & User Filter Dropdowns for Project Owners */}
+      {userProjects.length > 0 && (
+        <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-slate-400 font-medium">Project:</span>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => {
+                  setSelectedProjectId(e.target.value);
+                  // Reset to current user when project changes (show their tasks by default)
+                  setSelectedProjectUserId(currentUser?.id || 'ALL');
+                }}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+              >
+                <option value="ALL">All My Projects</option>
+                {userProjects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} {p.owner?.id === currentUser.id ? '(Owner)' : ''}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-slate-400 font-medium">Team Member:</span>
+              <select
+                value={selectedProjectUserId}
+                onChange={e => setSelectedProjectUserId(e.target.value)}
+                disabled={selectedProjectId === 'ALL'}
+                className={`bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none ${selectedProjectId === 'ALL' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <option value="ALL">All Members</option>
+                {projectUsers.map(u => (
+                  <option key={u.id} value={u.id}>{u.fullName} ({u.role}){u.id === currentUser.id ? ' (You)' : ''}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 flex-1 min-h-0">
         {columnConfig.map((col) => {
           const { id, title, icon: ColIcon, color, tasks: columnTasks } = col;
           const bgColor = {
             slate: 'bg-slate-800/50 border-slate-700',
             blue: 'bg-blue-900/30 border-blue-800/50',
+            rose: 'bg-rose-900/30 border-rose-800/50',
             emerald: 'bg-emerald-900/30 border-emerald-800/50',
           }[color];
 
           const textColor = {
             slate: 'text-slate-300',
             blue: 'text-blue-300',
+            rose: 'text-rose-300',
             emerald: 'text-emerald-300',
           }[color];
 

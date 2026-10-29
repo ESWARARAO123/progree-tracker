@@ -7,6 +7,8 @@ class CreateLeaveRequest(BaseModel):
     start_date: date
     end_date: date
     reason: str
+    user_id: str | None = None
+    status: str | None = None
 
 
 class LeaveBalanceResponse(BaseModel):

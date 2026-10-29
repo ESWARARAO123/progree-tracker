@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -11,6 +11,8 @@ from app.models.user import User
 from app.models.role import Role
 from app.models.leave_request import LeaveRequest
 from app.models.notification import Notification
+from app.models.project import Project
+from app.models.project_assignment import ProjectAssignment
 from app.schemas.leave import (
     LeaveRequestResponse,
     CreateLeaveRequest,
@@ -222,42 +224,109 @@ async def apply_leave(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Apply leave request from user {user.id} ({user.full_name}): body={body}")
+    
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="End date cannot be before start date.")
 
-    tomorrow_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date() + timedelta(days=1)
-    if body.start_date < tomorrow_ist:
+    today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    if user.role.name != "ADMIN" and body.start_date < today_ist:
         raise HTTPException(
             status_code=400,
-            detail="Leave requests must start from tomorrow or later. Past and today's dates are not allowed.",
+            detail="Leave requests must start from today or later. Past dates are not allowed.",
         )
 
     request_type = body.request_type or "LEAVE"
-    if request_type not in VALID_REQUEST_TYPES:
+    if request_type not in ("LEAVE", "WFH"):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid request type '{request_type}'. Must be one of: {', '.join(VALID_REQUEST_TYPES)}.",
+            detail=f"Invalid request type '{request_type}'. Must be one of: LEAVE, WFH.",
         )
 
+    import uuid as uuid_lib
+    # Determine target user - admin or project owner can specify user_id
+    target_user_id = user.id
+    if body.user_id and body.user_id != str(user.id):
+        # Check if current user is admin
+        if user.role.name != "ADMIN":
+            # Check if current user is project owner of a project the target user is assigned to
+            from app.models.project import Project
+            from app.models.project_assignment import ProjectAssignment
+            try:
+                target_uuid = uuid_lib.UUID(body.user_id)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid user_id format")
+            result = await db.execute(
+                select(Project).join(ProjectAssignment).where(
+                    Project.owner_id == user.id,
+                    ProjectAssignment.user_id == target_uuid
+                )
+            )
+            project = result.scalar_one_or_none()
+            if not project:
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only submit leave requests for your own project team members."
+                )
+        try:
+            target_user_id = uuid_lib.UUID(body.user_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid user_id format")
+        # Verify target user exists
+        target_user_result = await db.execute(select(User).where(User.id == target_user_id))
+        target_user = target_user_result.scalar_one_or_none()
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Target user not found")
+
+    is_admin = user.role.name == "ADMIN"
+    leave_status = "PENDING"
+    reviewed_by = None
+    admin_comment = None
+    if is_admin:
+        if body.status in ("APPROVED", "PENDING"):
+            leave_status = body.status
+        else:
+            leave_status = "APPROVED"
+        if leave_status == "APPROVED":
+            reviewed_by = user.id
+            admin_comment = "Added directly by Admin"
+
     leave = LeaveRequest(
-        user_id=user.id,
+        user_id=target_user_id,
         request_type=request_type,
         start_date=body.start_date,
         end_date=body.end_date,
         reason=body.reason,
+        status=leave_status,
+        reviewed_by=reviewed_by,
+        admin_comment=admin_comment,
     )
     db.add(leave)
     await db.flush()
 
+    # Get the actual user for notification
+    leave_user_result = await db.execute(select(User).where(User.id == target_user_id))
+    leave_user = leave_user_result.scalar_one()
+
     label = REQUEST_TYPE_LABELS.get(request_type, request_type)
-    admins = await get_admin_users(db)
-    for admin in admins:
+    if is_admin and target_user_id != user.id:
         await create_notification(
-            db, str(admin.id),
-            f"New {label} Request",
-            f"{user.full_name} has submitted a {label} request from {body.start_date} to {body.end_date}.",
+            db, str(target_user_id),
+            f"{label} Request Added",
+            f"Admin {user.full_name} has added a {label} request ({leave_status}) for you from {body.start_date} to {body.end_date}.",
             link="/leave",
         )
+    elif not is_admin:
+        admins = await get_admin_users(db)
+        for admin in admins:
+            await create_notification(
+                db, str(admin.id),
+                f"New {label} Request",
+                f"{leave_user.full_name} has submitted a {label} request from {body.start_date} to {body.end_date}.",
+                link="/leave",
+            )
 
     await db.commit()
     await db.refresh(leave)

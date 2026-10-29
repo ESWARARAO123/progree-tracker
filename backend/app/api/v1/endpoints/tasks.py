@@ -217,9 +217,13 @@ async def delete_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
     is_admin = user.role.name == "ADMIN"
-    if not is_admin:
-        if task.assigned_to != user.id:
-            raise HTTPException(status_code=403, detail="Only the assigned user or an admin can delete this task.")
+    is_project_owner = task.project and task.project.owner_id == user.id
+    is_assignee = task.assigned_to == user.id
+
+    if not (is_admin or is_project_owner or is_assignee):
+        raise HTTPException(status_code=403, detail="Only the assigned user, project owner, or an admin can delete this task.")
+
+    if is_assignee and not is_admin and not is_project_owner:
         if not _age_is_within(task.created_at, EDIT_WINDOW):
             raise HTTPException(status_code=403, detail="Tasks can only be deleted by the assignee within 7 days of creation. Contact an admin to delete older tasks.")
 
@@ -244,8 +248,12 @@ async def update_task_status(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    if user.role.name != "ADMIN" and task.assigned_to != user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    is_admin = user.role.name == "ADMIN"
+    is_project_owner = task.project and task.project.owner_id == user.id
+    is_assignee = task.assigned_to == user.id
+
+    if not (is_admin or is_project_owner or is_assignee):
+        raise HTTPException(status_code=403, detail="Only the assigned user, project owner, or an admin can update this task.")
 
     task.status = body.status
     if body.attachment_url is not None:
@@ -295,12 +303,16 @@ async def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
     is_admin = user.role.name == "ADMIN"
-    if not is_admin:
-        if task.assigned_to != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="Only the assigned user or an admin can edit this task.",
-            )
+    is_project_owner = task.project and task.project.owner_id == user.id
+    is_assignee = task.assigned_to == user.id
+
+    if not (is_admin or is_project_owner or is_assignee):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the assigned user, project owner, or an admin can edit this task.",
+        )
+
+    if is_assignee and not is_admin and not is_project_owner:
         if not _age_is_within(task.created_at, EDIT_WINDOW):
             raise HTTPException(
                 status_code=403,

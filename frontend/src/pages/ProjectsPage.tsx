@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Users, Check, X, Clock, MessageSquare, FolderOpen } from 'lucide-react';
+import { Plus, Briefcase, Calendar, AlertCircle, Pencil, Trash2, MoreVertical, CheckCircle2, UserCircle2, Users, Check, X, Clock, MessageSquare, FolderOpen, GitBranch, FileText, ExternalLink, Plane } from 'lucide-react';
 import * as api from '../api';
 import { NewProjectModal } from '../components/NewProjectModal';
 import { EditProjectModal } from '../components/EditProjectModal';
@@ -10,6 +10,8 @@ import { ProjectDocumentsModal } from '../components/ProjectDocumentsModal';
 import { ProjectStatusModal } from '../components/ProjectStatusModal';
 import { ProjectTeamUpdatesModal } from '../components/ProjectTeamUpdatesModal';
 import { NewTaskModal } from '../components/NewTaskModal';
+import { ProjectOwnerLeaveModal } from '../components/ProjectOwnerLeaveModal';
+import { ProjectOwnerTasksModal } from '../components/ProjectOwnerTasksModal';
 import { isWithinDays } from '../utils/date';
 import { useAuth } from '../context/AuthContext';
 import type { Project } from '../types';
@@ -25,6 +27,8 @@ export const ProjectsPage: React.FC = () => {
   const [taskProject, setTaskProject] = useState<Project | null>(null);
   const [statusProject, setStatusProject] = useState<Project | null>(null);
   const [teamUpdatesProject, setTeamUpdatesProject] = useState<Project | null>(null);
+  const [leaveProject, setLeaveProject] = useState<Project | null>(null);
+  const [tasksProject, setTasksProject] = useState<Project | null>(null);
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
   const [adminMenuProjectId, setAdminMenuProjectId] = useState<string | null>(null);
   const [membersMenuProjectId, setMembersMenuProjectId] = useState<string | null>(null);
@@ -213,6 +217,51 @@ export const ProjectsPage: React.FC = () => {
                           >
                             <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
                             <span>Chat</span>
+                          </button>
+                        </>
+                      )}
+                      {p.githubUrl && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); window.open(p.githubUrl!, '_blank'); setMenuProjectId(null); }}
+                          className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-sky-300 hover:bg-sky-500/10 transition"
+                        >
+                          <GitBranch className="w-3.5 h-3.5 text-sky-400" />
+                          <span>Open GitHub</span>
+                          <ExternalLink className="w-3 h-3 text-sky-400/60 ml-auto" />
+                        </button>
+                      )}
+                      {p.sharepointUrl && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); window.open(p.sharepointUrl!, '_blank'); setMenuProjectId(null); }}
+                          className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-emerald-300 hover:bg-emerald-500/10 transition"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Open SharePoint</span>
+                          <ExternalLink className="w-3 h-3 text-emerald-400/60 ml-auto" />
+                        </button>
+                      )}
+                      {isOwner && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setLeaveProject(p); setMenuProjectId(null); }}
+                            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-orange-300 hover:bg-orange-500/10 transition"
+                          >
+                            <Plane className="w-3.5 h-3.5 text-orange-400" />
+                            <span>Add Leave/WFH for Team</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingProject(p); setMenuProjectId(null); }}
+                            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-sky-300 hover:bg-sky-500/10 transition"
+                          >
+                            <GitBranch className="w-3.5 h-3.5 text-sky-400" />
+                            <span>Edit GitHub URL</span>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingProject(p); setMenuProjectId(null); }}
+                            className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-lg text-xs text-emerald-300 hover:bg-emerald-500/10 transition"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Edit SharePoint Links</span>
                           </button>
                         </>
                       )}
@@ -609,6 +658,17 @@ export const ProjectsPage: React.FC = () => {
         onClose={() => setTeamUpdatesProject(null)}
         project={teamUpdatesProject}
         token={token || ''}
+      />
+      <ProjectOwnerLeaveModal
+        isOpen={!!leaveProject}
+        onClose={() => setLeaveProject(null)}
+        projectId={leaveProject?.id || ''}
+      />
+      <ProjectOwnerTasksModal
+        isOpen={!!tasksProject}
+        onClose={() => setTasksProject(null)}
+        projectId={tasksProject?.id || ''}
+        projectName={tasksProject?.name || ''}
       />
     </div>
   );

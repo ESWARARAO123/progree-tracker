@@ -38,6 +38,7 @@ export interface Meeting {
   startTime: string;
   endTime?: string;
   meetingLink?: string;
+  mom?: string;
   createdBy: string;
   createdByName?: string;
   assigneeIds: string[];
@@ -62,6 +63,8 @@ export interface Project {
   priority: Priority;
   status: ProjectStatus;
   progressPercentage: number;
+  githubUrl?: string;
+  sharepointUrl?: string;
   assignedUsers: User[];
   owner?: { id: string; fullName: string; email: string };
   overdueTasksCount: number;

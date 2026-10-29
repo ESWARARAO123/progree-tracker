@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { CalendarDays, X, UserCheck, Link, Clock } from 'lucide-react';
+import { CalendarDays, X, UserCheck, Link, Clock, FileText } from 'lucide-react';
 import type { Meeting } from '../types';
 
 interface Props {
@@ -21,6 +21,7 @@ export const PlanMeetingModal: React.FC<Props> = ({ isOpen, onClose, date, meeti
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
+  const [mom, setMom] = useState('');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export const PlanMeetingModal: React.FC<Props> = ({ isOpen, onClose, date, meeti
       setStartTime(meeting.startTime);
       setEndTime(meeting.endTime || '');
       setMeetingLink(meeting.meetingLink || '');
+      setMom(meeting.mom || '');
       setAssigneeIds(meeting.assigneeIds);
     } else {
       setTitle('');
@@ -39,6 +41,7 @@ export const PlanMeetingModal: React.FC<Props> = ({ isOpen, onClose, date, meeti
       setStartTime('10:00');
       setEndTime('');
       setMeetingLink('');
+      setMom('');
       setAssigneeIds([]);
     }
   }, [meeting, date]);
@@ -66,6 +69,7 @@ export const PlanMeetingModal: React.FC<Props> = ({ isOpen, onClose, date, meeti
       startTime,
       endTime: endTime || undefined,
       meetingLink: meetingLink || undefined,
+      mom: mom || undefined,
       assigneeIds,
     };
     if (isEdit && meeting) {
@@ -169,6 +173,21 @@ export const PlanMeetingModal: React.FC<Props> = ({ isOpen, onClose, date, meeti
               placeholder="https://meet.google.com/..."
               className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center space-x-1">
+              <FileText className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Minutes of Meeting (MoM)</span>
+            </label>
+            <textarea
+              rows={3}
+              value={mom}
+              onChange={e => setMom(e.target.value)}
+              placeholder="Key decisions, action items, discussion points..."
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-emerald-500 focus:outline-none resize-none"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">Visible to all meeting assignees</p>
           </div>
 
           <div>
