@@ -33,7 +33,6 @@ export const ProjectOwnerLeaveModal: React.FC<Props> = ({ isOpen, onClose, proje
 
   if (!isOpen) return null;
 
-  const minStartDate = todayIST();
   const selectedOption = REQUEST_TYPE_OPTIONS.find(o => o.value === requestType);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,8 +42,8 @@ export const ProjectOwnerLeaveModal: React.FC<Props> = ({ isOpen, onClose, proje
       setError('Please select at least one user');
       return;
     }
-    if (startDate < minStartDate) {
-      alert('Past dates are not allowed. Request must start from today or later.');
+    if (endDate < startDate) {
+      setError('End date cannot be before start date');
       return;
     }
     if (!token) return;
@@ -158,7 +157,6 @@ export const ProjectOwnerLeaveModal: React.FC<Props> = ({ isOpen, onClose, proje
               <input
                 type="date"
                 required
-                min={minStartDate}
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-orange-500 focus:outline-none"

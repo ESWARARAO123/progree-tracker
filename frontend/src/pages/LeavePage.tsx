@@ -63,10 +63,19 @@ export const LeavePage: React.FC<{ viewMode?: 'requests' | 'calendar' }> = ({ vi
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedLeaveUserId, setSelectedLeaveUserId] = useState<string | undefined>(undefined);
   const [selectedLeaveDate, setSelectedLeaveDate] = useState<string | undefined>(undefined);
+  const [editLeaveRequest, setEditLeaveRequest] = useState<LeaveRequest | null>(null);
 
   const openApplyModal = (userId?: string, date?: string) => {
     setSelectedLeaveUserId(userId);
     setSelectedLeaveDate(date);
+    setEditLeaveRequest(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (req: LeaveRequest) => {
+    setEditLeaveRequest(req);
+    setSelectedLeaveUserId(req.userId);
+    setSelectedLeaveDate(req.startDate);
     setIsModalOpen(true);
   };
 
@@ -201,9 +210,9 @@ export const LeavePage: React.FC<{ viewMode?: 'requests' | 'calendar' }> = ({ vi
       case 'WEEKEND':
         return dayOfWeek === 0 ? 'Sun' : 'Sat';
       case 'LEAVE': return 'L';
-      case 'WFH': return 'H';
+      case 'WFH': return 'WFH';
       case 'WFBO': return 'O';
-      case 'HOLIDAY': return 'PH';
+      case 'HOLIDAY': return 'SH';
       default: return '';
     }
   };
@@ -426,30 +435,42 @@ export const LeavePage: React.FC<{ viewMode?: 'requests' | 'calendar' }> = ({ vi
                           const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                           const isToday = dateStr === currentTodayStr;
                           const holidayName = holidayMap[dateStr];
+                          const canEdit = isAdmin || user.id === currentUser.id;
+                          const existingReq = leaveRequests.find(
+                            r => r.userId === user.id && r.startDate <= dateStr && r.endDate >= dateStr
+                          );
                           return (
                             <td
                               key={day}
                               onClick={() => {
-                                if (isAdmin) {
-                                  openApplyModal(user.id, dateStr);
+                                if (canEdit) {
+                                  if (existingReq) {
+                                    openEditModal(existingReq);
+                                  } else {
+                                    openApplyModal(user.id, dateStr);
+                                  }
                                 }
                               }}
                               className={`p-1 text-center min-w-[38px] max-w-[38px] border-b border-slate-800/60 ${
                                 isToday
                                   ? 'bg-blue-500/15 border-x-2 border-x-blue-400/40'
                                   : 'border-r border-slate-800/40'
-                              } ${isAdmin ? 'cursor-pointer hover:bg-slate-700/40' : ''}`}
+                              } ${canEdit ? 'cursor-pointer hover:bg-slate-700/40' : ''}`}
                             >
                               <div
                                 className={`${color} border h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all hover:scale-[1.05] ${
-                                  isAdmin ? 'cursor-pointer' : 'cursor-default'
+                                  canEdit ? 'cursor-pointer' : 'cursor-default'
                                 } ${
                                   isToday ? 'ring-1 ring-blue-400/50 shadow-sm' : ''
                                 }`}
                                 title={
-                                  isAdmin
-                                    ? `Click to add leave for ${user.fullName} on ${dateStr}`
-                                    : (status.type === 'HOLIDAY' ? holidayName : `${status.label} (${user.fullName})`)
+                                  canEdit
+                                    ? existingReq
+                                      ? `Click to update ${existingReq.requestType} for ${user.fullName} on ${dateStr}`
+                                      : `Click to record leave/WFH for ${user.fullName} on ${dateStr}`
+                                    : status.type === 'HOLIDAY'
+                                    ? holidayName
+                                    : `${status.label} (${user.fullName})`
                                 }
                               >
                                 {label}
@@ -481,12 +502,8 @@ export const LeavePage: React.FC<{ viewMode?: 'requests' | 'calendar' }> = ({ vi
                   <span className="text-amber-300">WFH</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <div className="w-5 h-5 rounded-lg bg-sky-500/30 border border-sky-500/50" />
-                  <span className="text-sky-300">WFBO</span>
-                </div>
-                <div className="flex items-center space-x-1">
                   <div className="w-5 h-5 rounded-lg bg-purple-500/30 border border-purple-500/50" />
-                  <span className="text-purple-300">Public Holiday</span>
+                  <span className="text-purple-300">Sierra Holiday (SH)</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <div className="w-5 h-5 rounded-lg bg-blue-500/20 border-2 border-blue-400" />
@@ -494,7 +511,7 @@ export const LeavePage: React.FC<{ viewMode?: 'requests' | 'calendar' }> = ({ vi
                 </div>
               </div>
               <div className="text-[10px] text-slate-500">
-                L = Leave | H = WFH | O = WFBO | PH = Public Holiday
+                L = Leave | WFH = WFH | SH = Sierra Holiday
               </div>
             </div>
           </div>
@@ -866,10 +883,12 @@ export const LeavePage: React.FC<{ viewMode?: 'requests' | 'calendar' }> = ({ vi
         isOpen={isModalOpen}
         initialUserId={selectedLeaveUserId}
         initialDate={selectedLeaveDate}
+        editLeave={editLeaveRequest}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedLeaveUserId(undefined);
           setSelectedLeaveDate(undefined);
+          setEditLeaveRequest(null);
           if (isAdmin) fetchToday();
         }}
       />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
@@ -11,6 +11,7 @@ import { LeavePage } from './pages/LeavePage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AuditPage } from './pages/AuditPage';
 import { UsersPage } from './pages/UsersPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { MorningUpdateModal } from './components/MorningUpdateModal';
 import { EveningUpdateModal } from './components/EveningUpdateModal';
@@ -38,7 +39,18 @@ const AppContent: React.FC = () => {
   );
 };
 
-const VALID_TABS = ['dashboard', 'projects', 'tasks', 'calendar', 'leave', 'leave-calendar', 'reports', 'audit', 'users'];
+const VALID_TABS = [
+  'dashboard',
+  'projects',
+  'tasks',
+  'calendar',
+  'leave',
+  'leave-calendar',
+  'reports',
+  'audit',
+  'users',
+  'settings',
+];
 
 const getInitialTab = () => {
   const hash = window.location.hash.replace('#', '');
@@ -56,6 +68,12 @@ const AppShell: React.FC = () => {
     () => localStorage.getItem('sidebarCollapsed') === 'true'
   );
 
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    window.location.hash = tab;
+    localStorage.setItem('activeTab', tab);
+  };
+
   const toggleSidebar = () => {
     setSidebarCollapsed((prev) => {
       localStorage.setItem('sidebarCollapsed', String(!prev));
@@ -63,13 +81,7 @@ const AppShell: React.FC = () => {
     });
   };
 
-  const setActiveTab = (tab: string) => {
-    setActiveTabState(tab);
-    window.location.hash = tab;
-    localStorage.setItem('activeTab', tab);
-  };
-
-  React.useEffect(() => {
+  useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
       if (hash && VALID_TABS.includes(hash)) {
@@ -82,7 +94,9 @@ const AppShell: React.FC = () => {
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-[#0b0f19] text-slate-100 antialiased selection:bg-blue-500 selection:text-white">
-      <Navbar />
+      <Navbar
+        onNavigateTab={setActiveTab}
+      />
 
       <div className="flex-1 flex overflow-y-auto">
         <Sidebar
@@ -110,6 +124,11 @@ const AppShell: React.FC = () => {
             {activeTab === 'reports' && <ReportsPage />}
             {activeTab === 'audit' && <AuditPage />}
             {activeTab === 'users' && <UsersPage />}
+            {activeTab === 'settings' && (
+              <SettingsPage
+                onNavigateTab={setActiveTab}
+              />
+            )}
           </div>
         </main>
 

@@ -39,6 +39,7 @@ interface AppContextType {
   updateTask: (taskId: string, data: any) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   applyLeave: (data: { requestType?: string; startDate: string; endDate: string; reason: string; userId?: string; status?: string }) => Promise<void>;
+  updateLeaveRequest: (id: string, data: any) => Promise<void>;
   reviewLeaveRequest: (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => Promise<void>;
   deleteLeaveRequest: (id: string) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
@@ -523,6 +524,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch { /* ignore */ }
   }, [token]);
 
+  const updateLeaveRequest = useCallback(async (id: string, data: any) => {
+    if (!token) return;
+    const result = await api.updateLeave(token, id, data);
+    const mapped = mapLeave(result);
+    setLeaveRequests(prev => prev.map(r => r.id === mapped.id ? mapped : r));
+    try {
+      const bRes = await api.getLeaveSummary(token);
+      setLeaveBalance(mapLeaveBalance(bRes));
+    } catch { /* ignore */ }
+  }, [token]);
+
   const reviewLeaveRequest = useCallback(async (id: string, status: 'APPROVED' | 'REJECTED', comment?: string) => {
     if (!token) return;
     const result = await api.reviewLeaveRequest(token, id, { status, admin_comment: comment });
@@ -613,6 +625,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateTask,
       deleteTask,
       applyLeave,
+      updateLeaveRequest,
       reviewLeaveRequest,
       deleteLeaveRequest,
       changePassword,

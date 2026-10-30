@@ -16,6 +16,7 @@ from app.models.project_assignment import ProjectAssignment
 from app.schemas.leave import (
     LeaveRequestResponse,
     CreateLeaveRequest,
+    UpdateLeaveRequest,
     ReviewLeaveRequest,
     LeaveBalanceResponse,
     UserLeaveUsageResponse,
@@ -231,13 +232,6 @@ async def apply_leave(
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="End date cannot be before start date.")
 
-    today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date()
-    if user.role.name != "ADMIN" and body.start_date < today_ist:
-        raise HTTPException(
-            status_code=400,
-            detail="Leave requests must start from today or later. Past dates are not allowed.",
-        )
-
     request_type = body.request_type or "LEAVE"
     if request_type not in ("LEAVE", "WFH"):
         raise HTTPException(
@@ -421,3 +415,60 @@ async def review_leave_request(
         created_at=leave.created_at,
         updated_at=leave.updated_at,
     )
+
+
+@router.patch("/{leave_id}", response_model=LeaveRequestResponse)
+async def update_leave_request(
+    leave_id: str,
+    body: UpdateLeaveRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(LeaveRequest).where(LeaveRequest.id == leave_id).options(
+            selectinload(LeaveRequest.user),
+            selectinload(LeaveRequest.reviewer),
+        )
+    )
+    leave = result.scalar_one_or_none()
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    is_admin = user.role.name == "ADMIN"
+    if not is_admin and str(leave.user_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to update this leave request")
+
+    if body.start_date is not None:
+        leave.start_date = body.start_date
+    if body.end_date is not None:
+        leave.end_date = body.end_date
+
+    if leave.end_date < leave.start_date:
+        raise HTTPException(status_code=400, detail="End date cannot be before start date.")
+
+    if body.request_type is not None:
+        if body.request_type not in ("LEAVE", "WFH"):
+            raise HTTPException(status_code=400, detail="Invalid request type. Must be LEAVE or WFH.")
+        leave.request_type = body.request_type
+
+    if body.reason is not None:
+        leave.reason = body.reason
+
+    if is_admin:
+        if body.status is not None:
+            leave.status = body.status
+        if body.admin_comment is not None:
+            leave.admin_comment = body.admin_comment
+
+    await db.commit()
+    await db.refresh(leave)
+
+    result = await db.execute(
+        select(LeaveRequest).where(LeaveRequest.id == leave.id).options(
+            selectinload(LeaveRequest.user),
+            selectinload(LeaveRequest.reviewer),
+        )
+    )
+    r = result.scalar_one()
+    return _serialize(r)
+

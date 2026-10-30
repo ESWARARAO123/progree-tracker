@@ -411,7 +411,7 @@ export const UsersPage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="bg-slate-900/80 border border-slate-800 rounded-xl shadow-xl">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
@@ -425,72 +425,95 @@ export const UsersPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-slate-800/40 transition">
-                <td className="px-4 py-3 text-white font-medium">{u.full_name}</td>
-                <td className="px-4 py-3 text-slate-300">{u.email}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-semibold ${u.role === 'ADMIN' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>
-                    {u.role === 'ADMIN' ? <Shield className="w-3 h-3" /> : <UserIcon className="w-3 h-3" />}
-                    <span>{u.role}</span>
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-slate-400 hidden md:table-cell">{u.department || '-'}</td>
-                <td className="px-4 py-3 text-slate-400 hidden md:table-cell">{u.designation || '-'}</td>
-                <td className="px-4 py-3 text-center">
-                  <button
-                    onClick={() => handleToggle(u.id)}
-                    className={`inline-flex items-center space-x-1 text-xs font-semibold transition ${u.is_active ? 'text-emerald-400 hover:text-emerald-300' : 'text-slate-500 hover:text-slate-400'}`}
-                    title={u.is_active ? 'Deactivate user' : 'Activate user'}
-                  >
-                    {u.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                    <span>{u.is_active ? 'Active' : 'Inactive'}</span>
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="relative inline-flex items-center justify-end">
+            {users.map((u, idx) => {
+              const isNearBottom = idx >= Math.max(0, users.length - 2);
+              return (
+                <tr key={u.id} className="hover:bg-slate-800/40 transition">
+                  <td className="px-4 py-3 text-white font-medium">{u.full_name}</td>
+                  <td className="px-4 py-3 text-slate-300">{u.email}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-semibold ${u.role === 'ADMIN' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>
+                      {u.role === 'ADMIN' ? <Shield className="w-3 h-3" /> : <UserIcon className="w-3 h-3" />}
+                      <span>{u.role}</span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-400 hidden md:table-cell">{u.department || '-'}</td>
+                  <td className="px-4 py-3 text-slate-400 hidden md:table-cell">{u.designation || '-'}</td>
+                  <td className="px-4 py-3 text-center">
                     <button
-                      onClick={() => setOpenMenuId(openMenuId === u.id ? null : u.id)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition"
-                      title="More actions"
+                      onClick={() => handleToggle(u.id)}
+                      className={`inline-flex items-center space-x-1 text-xs font-semibold transition ${u.is_active ? 'text-emerald-400 hover:text-emerald-300' : 'text-slate-500 hover:text-slate-400'}`}
+                      title={u.is_active ? 'Deactivate user' : 'Activate user'}
                     >
-                      <MoreHorizontal className="w-4 h-4" />
+                      {u.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                      <span>{u.is_active ? 'Active' : 'Inactive'}</span>
                     </button>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end space-x-1">
+                      {/* Direct 1-Click Action Buttons */}
+                      <button
+                        onClick={() => startEditing(u)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-blue-400 hover:text-blue-300 border border-slate-700 transition"
+                        title="Edit User"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(u.id, u.full_name)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 border border-slate-700 transition"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
 
-                    {openMenuId === u.id && (
-                      <div className="absolute right-0 top-10 z-20 w-36 rounded-xl border border-slate-700 bg-slate-900 shadow-xl overflow-hidden">
+                      {/* Dropdown Menu (Pops upward on bottom rows) */}
+                      <div className="relative inline-flex items-center justify-end">
                         <button
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            startEditing(u);
-                          }}
-                          className="flex w-full items-center space-x-2 px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+                          onClick={() => setOpenMenuId(openMenuId === u.id ? null : u.id)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition"
+                          title="More actions"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
-                          <span>Edit</span>
+                          <MoreHorizontal className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            handleDelete(u.id, u.full_name);
-                          }}
-                          className="flex w-full items-center space-x-2 px-3 py-2 text-left text-sm text-rose-300 hover:bg-slate-800"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete</span>
-                        </button>
-                        <button
-                          onClick={() => setOpenMenuId(null)}
-                          className="flex w-full items-center justify-center px-3 py-2 text-sm text-slate-400 hover:bg-slate-800"
-                        >
-                          Cancel
-                        </button>
+
+                        {openMenuId === u.id && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setOpenMenuId(null)} />
+                            <div
+                              className={`absolute right-0 z-40 w-36 rounded-xl border border-slate-700 bg-slate-900 shadow-2xl py-1 ${
+                                isNearBottom ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+                              }`}
+                            >
+                              <button
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  startEditing(u);
+                                }}
+                                className="flex w-full items-center space-x-2 px-3 py-2 text-left text-xs font-medium text-slate-200 hover:bg-slate-800 transition"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-blue-400" />
+                                <span>Edit User</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  handleDelete(u.id, u.full_name);
+                                }}
+                                className="flex w-full items-center space-x-2 px-3 py-2 text-left text-xs font-medium text-rose-400 hover:bg-slate-800 transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete User</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

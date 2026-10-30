@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Clock, Lock, Zap, LogOut, Check, CheckCheck, ChevronDown, KeyRound, Mail } from 'lucide-react';
+import { Bell, Clock, Lock, Zap, LogOut, Check, CheckCheck, ChevronDown, KeyRound, Mail, Bot } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onNavigateTab?: (tab: string) => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onNavigateTab }) => {
   const { currentUser, notifications, trigger10PmScan, markNotificationRead, markAllNotificationsRead } = useApp();
   const { logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -43,6 +47,15 @@ export const Navbar: React.FC = () => {
         >
           <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
           <span className="hidden sm:inline">Simulate 10 PM Scan</span>
+        </button>
+
+        <button
+          onClick={() => (onNavigateTab ? onNavigateTab('settings') : (window.location.hash = 'settings'))}
+          className="p-2 rounded-lg bg-slate-800 border border-slate-700/70 hover:bg-slate-700 text-purple-400 hover:text-purple-300 relative transition flex items-center space-x-1.5"
+          title="Diagnostic Bot & Error Troubleshooting"
+        >
+          <Bot className="w-4 h-4" />
+          <span className="hidden sm:inline text-xs font-medium text-slate-300">Help Bot</span>
         </button>
 
         <div className="relative">
@@ -147,26 +160,36 @@ export const Navbar: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    if (onNavigateTab) onNavigateTab('settings');
+                    else window.location.hash = 'settings';
+                  }}
+                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-purple-300 hover:bg-slate-800 transition"
+                >
+                  <Bot className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Settings & Help Bot</span>
+                </button>
+                <button
                   onClick={() => { setShowUserMenu(false); setIsPasswordOpen(true); }}
                   className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-slate-300 hover:bg-slate-800 transition"
                 >
-                  <KeyRound className="w-3.5 h-3.5 text-blue-400" />
+                  <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Change Password</span>
                 </button>
                 <button
-                  onClick={logout}
-                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
-                </button>
-
-                <button
-                  onClick={() => window.open('mailto:eswar@sierraedge.ai?subject=Sierra%20Team%20Hub%20Feedback&body=Hello%20Eswar,%0A%0AI%20have%20a%20suggestion%20regarding%20Sierra%20Team%20Hub%3A%0A%0A')}
+                  onClick={() => window.open('mailto:eswar@sierraedge.ai?subject=Sierra%20Team%20Hub%20Support&body=Hello%20Eswar,%0A%0AI%20need%20assistance%20with%20Sierra%20Team%20Hub%3A%0A%0A')}
                   className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-emerald-400 hover:bg-emerald-500/10 transition"
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  <span>Send Feedback / Suggestion</span>
+                  <span>Support (eswar@sierraedge.ai)</span>
+                </button>
+                <button
+                  onClick={logout}
+                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-rose-400 hover:bg-rose-500/10 transition border-t border-slate-800/80 mt-1 pt-2"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             )}

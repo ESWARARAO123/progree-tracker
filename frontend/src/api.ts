@@ -368,6 +368,13 @@ export async function applyLeave(token: string, data: any) {
   return handleResponse(res);
 }
 
+export async function updateLeave(token: string, leaveId: string, data: any) {
+  const res = await fetch(`${API_BASE}/leave/${leaveId}`, {
+    method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
 export async function reviewLeaveRequest(token: string, leaveId: string, data: any) {
   const res = await fetch(`${API_BASE}/leave/${leaveId}/review`, {
     method: 'PATCH', headers: authHeaders(token), body: JSON.stringify(data),

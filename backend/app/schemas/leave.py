@@ -26,6 +26,15 @@ class ReviewLeaveRequest(BaseModel):
     admin_comment: str | None = None
 
 
+class UpdateLeaveRequest(BaseModel):
+    request_type: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    reason: str | None = None
+    status: str | None = None
+    admin_comment: str | None = None
+
+
 class LeaveRequestResponse(BaseModel):
     id: str
     user_id: str

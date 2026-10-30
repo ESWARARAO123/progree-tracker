@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Sun, Moon, Briefcase, CheckSquare, Calendar as CalendarIcon, FileText, BarChart3, ShieldAlert, Users, PanelLeftClose, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Sun, Moon, Briefcase, CheckSquare, Calendar as CalendarIcon, FileText, BarChart3, ShieldAlert, Users, PanelLeftClose, CalendarDays, Settings } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface SidebarProps {
@@ -11,7 +11,14 @@ interface SidebarProps {
   onToggleCollapse?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openMorningModal, openEveningModal, collapsed, onToggleCollapse }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  activeTab,
+  setActiveTab,
+  openMorningModal,
+  openEveningModal,
+  collapsed,
+  onToggleCollapse,
+}) => {
   const { currentUser } = useApp();
 
   if (collapsed) return null;
@@ -30,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openM
       { id: 'users', label: 'User Management', icon: Users },
       { id: 'audit', label: 'Audit Logs', icon: ShieldAlert },
     ] : []),
+    { id: 'settings', label: 'Settings & Help', icon: Settings },
   ];
 
   return (
@@ -72,7 +80,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openM
 
       {/* Primary Navigation */}
       <div className="space-y-1 flex-1">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">Navigation</div>
+        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">
+          Navigation
+        </div>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -80,14 +90,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, openM
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition ${
                 isActive
                   ? 'bg-blue-600/15 border border-blue-500/30 text-blue-400 font-semibold shadow-inner'
                   : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
-              <span>{item.label}</span>
+              <div className="flex items-center space-x-3 truncate">
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
+                <span className="truncate">{item.label}</span>
+              </div>
             </button>
           );
         })}
